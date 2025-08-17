@@ -1,0 +1,87 @@
+[project]
+name = "projeto_aplicado"
+version = "0.1.0"
+description = "Backend for the Food Truck project"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    # Web Framework
+    "fastapi[standard]>=0.115.12,<0.116.0",
+    "uvicorn[standard]>=0.34.2,<0.35.0",
+    "pydantic-settings>=2.9.1,<2.10.0",
+    # Database
+    "sqlmodel>=0.0.24,<0.0.25",
+    "sqlalchemy[asyncio]>=2.0.41,<2.1.0",
+    "alembic>=1.16.1,<1.17.0",
+    "asyncpg>=0.30.0,<0.31.0",
+    "psycopg2-binary>=2.9.10,<2.10.0",
+    # Authentication & Security
+    "pyjwt>=2.10.1,<2.11.0",
+    "passlib[argon2]>=1.7.4,<1.8.0",
+    "pwdlib[argon2]>=0.2.1,<0.3.0",
+    "email-validator>=2.2.0,<2.3.0",
+    # Utilities
+    "python-ulid>=3.0.0,<4.0.0",
+    "redis>=6.1.0,<7.0.0",
+]
+
+[dependency-groups]
+dev = [
+    # Development Tools
+    "taskipy>=1.14.1",
+    "ignr>=2.2",
+    
+    # Code Quality
+    "ruff>=0.11.11",
+    
+    # Testing
+    "pytest>=8.3.5",
+    "pytest-cov>=6.1.1",
+    "pytest-asyncio>=1.0.0,<1.1.0",
+]
+
+test = [
+    # Testing Infrastructure
+    "aiosqlite>=0.21.0,<0.22.0",
+    "testcontainers[postgres]>=4.10.0,<5.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["projeto_aplicado*"]
+
+[tool.ruff]
+line-length = 79
+exclude = ["app/database/migrations"]
+
+[tool.ruff.lint]
+preview = true
+ignore = ['PLR6301']
+select = ['I', 'F', 'E', 'W', 'PL', 'PT']
+
+[tool.ruff.format]
+preview = true
+quote-style = 'single'
+
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = '-p no:warnings'
+asyncio_default_fixture_loop_scope = 'function'
+testpaths = ["tests", "projeto_aplicado/cli/tests"]
+
+[tool.taskipy.tasks]
+lint = 'ruff check . && ruff check . --diff'
+format = 'ruff check . --fix && ruff format .'
+dev = 'fastapi dev projeto_aplicado/app.py'
+test = 'pytest -s -x --cov=projeto_aplicado'
+run = 'fastapi run projeto_aplicado/app.py'
+export = 'uv pip compile pyproject.toml --output-file requirements.txt'
+
+# Database Migration Tasks
+migrate = 'alembic upgrade head'
+migrate-create = 'alembic revision --autogenerate -m'
+migrate-init = 'alembic init migrations'
+migrate-history = 'alembic history'
+migrate-current = 'alembic current'
+migrate-downgrade = 'alembic downgrade -1'
+migrate-upgrade = 'alembic upgrade +1'
+migrate-stamp = 'alembic stamp head'
