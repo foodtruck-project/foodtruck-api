@@ -52,9 +52,11 @@ git clone https://github.com/foodtruck-project/foodtruck-api.git
 cd foodtruck-api
 docker-compose up --build -d
 
-# Inicializar de dentro do container
-docker-compose exec api uv run python -m projeto_aplicado.cli.app database init
-docker-compose exec api uv run python -m projeto_aplicado.cli.app admin create admin admin@foodtruck.com admin123 "Admin"
+# Inicializar container de modo interativo
+docker-compose up
+
+# Inicializar container de  modo "detached" (ou background)
+docker-compose up -d
 ```
 
 ## 🔌 API REST
@@ -63,7 +65,7 @@ docker-compose exec api uv run python -m projeto_aplicado.cli.app admin create a
 
 | Propriedade | Valor |
 |-------------|-------|
-| **URL Base** | `http://localhost:8000` |
+| **URL Base** | `http://localhost:8000` | `http://foodtruck.docker.localhost/` |
 | **Versão** | v1 |
 | **Prefixo** | `/api/v1` |
 | **Documentação** | `/docs` (Swagger UI) |
