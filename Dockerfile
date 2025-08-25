@@ -1,46 +1,33 @@
-ARG BASE_IMAGE=python:3.13-slim-bookworm
+FROM python:3.12-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-FROM ${BASE_IMAGE} AS base
-
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates
-
-ADD https://astral.sh/uv/install.sh /uv-installer.sh
-
-RUN sh /uv-installer.sh && rm /uv-installer.sh
-
-ENV PATH="/root/.local/bin/:$PATH"
-
-FROM base AS builder
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+ENV UV_CACHE_DIR=/opt/uv-cache/
 
 WORKDIR /app
 
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml .
+COPY uv.lock .
 
-RUN uv venv && . .venv/bin/activate && \
-    uv lock && \
-    uv sync
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --locked --no-install-project
 
-COPY . .
 
-FROM base AS runner
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked
 
-WORKDIR /app
 
-COPY --from=builder /app/.venv .venv
+ADD . /app
 
-ENV PATH="/app/.venv/bin:$PATH"
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked
 
-COPY --from=builder /app/projeto_aplicado /app/projeto_aplicado
-COPY --from=builder /app/migrations /app/migrations
-COPY --from=builder /app/pyproject.toml /app/pyproject.toml
-COPY --from=builder /app/uv.lock /app/uv.lock
-COPY --from=builder /app/alembic.ini /app/alembic.ini
+EXPOSE 8080
 
-EXPOSE 8000
+ENTRYPOINT [ "uv" ]
 
-HEALTHCHECK --interval=15s --timeout=2s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost:8000/docs || exit 1
+CMD ["run", "uvicorn", "projeto_aplicado.app:app", "--host", "0.0.0.0", "--port", "8080"]
 
-ENTRYPOINT ["uvicorn"]
-
-CMD ["projeto_aplicado.app:app", "--host", "0.0.0.0", "--port", "8000"]
