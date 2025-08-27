@@ -71,8 +71,8 @@ curl -X 'POST' \
   "username": "string",
   "email": "user@example.com",
   "password": "string",
-  "role": "kitchen",
-  "full_name": "string"
+  "role": "admin",
+  "full_name": ""admin""
 }'
 ```
 ## 🔌 API REST
