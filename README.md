@@ -72,7 +72,7 @@ curl -X 'POST' \
   "email": "user@example.com",
   "password": "string",
   "role": "admin",
-  "full_name": ""admin""
+  "full_name": "admin"
 }'
 ```
 ## 🔌 API REST
