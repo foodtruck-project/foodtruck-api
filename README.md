@@ -57,8 +57,24 @@ docker-compose up
 
 # Inicializar container de  modo "detached" (ou background)
 docker-compose up -d
-```
 
+# Migrações de banco de dados no Windows
+docker-compose exec backend uv run alembic upgrade head
+```
+**Cria o primeiro usuário (administrador)**:
+```bash
+curl -X 'POST' \
+  'http://foodtruck.docker.localhost/api/v1/users/setup' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "username": "string",
+  "email": "user@example.com",
+  "password": "string",
+  "role": "kitchen",
+  "full_name": "string"
+}'
+```
 ## 🔌 API REST
 
 ### Informações da API
