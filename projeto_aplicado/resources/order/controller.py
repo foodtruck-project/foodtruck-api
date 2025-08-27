@@ -1,4 +1,6 @@
+import logging
 from http import HTTPStatus
+from zoneinfo import ZoneInfo
 from typing import Annotated
 
 from fastapi import (
@@ -151,12 +153,12 @@ def fetch_orders(
             status=OrderStatus(order.status.upper()),
             total=order.total,
             rating=order.rating,
-            created_at=order.created_at.isoformat()
-            if hasattr(order.created_at, 'isoformat')
-            else str(order.created_at),
-            updated_at=order.updated_at.isoformat()
-            if hasattr(order.updated_at, 'isoformat')
-            else str(order.updated_at),
+            created_at=order.created_at.astimezone(
+                ZoneInfo('America/Sao_Paulo')
+            ).isoformat(),
+            updated_at=order.updated_at.astimezone(
+                ZoneInfo('America/Sao_Paulo')
+            ).isoformat(),
             locator=order.locator,
             notes=order.notes,
         )
@@ -192,6 +194,7 @@ def fetch_order_by_id(
     """
 
     order = repository.get_by_id(order_id)
+    print(f"Order created_at: {order.created_at}, type: {type(order.created_at)}")
 
     if not order:
         raise HTTPException(
@@ -202,12 +205,12 @@ def fetch_order_by_id(
         id=order.id,
         status=OrderStatus(order.status.upper()),
         total=order.total,
-        created_at=order.created_at.isoformat()
-        if hasattr(order.created_at, 'isoformat')
-        else str(order.created_at),
-        updated_at=order.updated_at.isoformat()
-        if hasattr(order.updated_at, 'isoformat')
-        else str(order.updated_at),
+        created_at=order.created_at.astimezone(
+            ZoneInfo('America/Sao_Paulo')
+        ).isoformat(),
+        updated_at=order.updated_at.astimezone(
+            ZoneInfo('America/Sao_Paulo')
+        ).isoformat(),
         locator=order.locator,
         products=order.products,  # type: ignore
         notes=order.notes,
