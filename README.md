@@ -61,7 +61,7 @@ docker-compose up -d
 # Migrações de banco de dados no Windows
 docker-compose exec backend uv run alembic upgrade head
 ```
-**Cria o primeiro usuário (administrador)**:
+### Criar o primeiro usuário (administrador):
 ```bash
 curl -X 'POST' \
   'http://foodtruck.docker.localhost/api/v1/users/setup' \
