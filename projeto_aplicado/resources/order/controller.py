@@ -1,12 +1,13 @@
 import logging
 from http import HTTPStatus
 from zoneinfo import ZoneInfo
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
+    status,
 )
 
 from projeto_aplicado.auth.security import get_current_user
@@ -22,6 +23,7 @@ from projeto_aplicado.resources.order.schemas import (
     OrderList,
     OrderOut,
     UpdateOrderDTO,
+    PublicProductData
 )
 from projeto_aplicado.resources.product.repository import (
     ProductRepository,
@@ -37,6 +39,31 @@ OrderRepo = Annotated[OrderRepository, Depends(get_order_repository)]
 ProductRepo = Annotated[ProductRepository, Depends(get_product_repository)]
 router = APIRouter(tags=['Pedidos'], prefix=f'{settings.API_PREFIX}/orders')
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+@router.get(
+    '/public_product_info',
+    response_model=List[PublicProductData],
+    status_code=HTTPStatus.OK,
+)
+def get_public_product_info(order_repository: OrderRepo):
+    """
+    Retorna uma lista de todos os produtos com suas quantidades e ratings, de todos os pedidos.
+    """
+    all_orders = order_repository.get_all()
+    product_info_list = []
+    
+    for order in all_orders:
+        for item in order.products:
+            product_info_list.append(
+                PublicProductData(
+                    product_id=item.product_id,
+                    quantity=item.quantity,
+                    rating=order.rating,
+                )
+            )
+            
+    return product_info_list
 
 
 @router.get(
@@ -100,16 +127,13 @@ def fetch_orders(
 ):
     """
     Retorna a lista de pedidos do sistema.
-
     Args:
         repository (OrderRepository): Repositório de pedidos.
         current_user (User): Usuário autenticado.
         offset (int, optional): Número de registros para pular. Padrão: 0.
         limit (int, optional): Limite de registros por página. Padrão: 100.
-
     Returns:
         OrderList: Lista de pedidos com informações de paginação.
-
     Examples:
         ```python
         # Exemplo de requisição
@@ -117,7 +141,6 @@ def fetch_orders(
             '/api/v1/orders',
             headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'}
         )
-
         # Exemplo de resposta (200 OK)
         {
             'orders': [
@@ -328,23 +351,19 @@ async def create_order(
 ):
     """
     Cria um novo pedido no sistema.
-
     Args:
         dto (CreateOrderDTO): Dados do pedido a ser criado.
         order_repository (OrderRepository): Repositório de pedidos.
         product_repository (ProductRepository): Repositório de produtos.
         current_user (User): Usuário autenticado.
-
     Returns:
         BaseResponse: Resposta indicando o resultado da operação.
-
     Raises:
         HTTPException:
             - Se os dados forem inválidos (400)
             - Se o usuário não estiver autenticado (401)
             - Se o usuário não tiver permissão (403)
             - Se algum produto não for encontrado (422)
-
     Examples:
         ```python
         # Exemplo de requisição
@@ -365,7 +384,6 @@ async def create_order(
             },
             headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'}
         )
-
         # Exemplo de resposta (201 Created)
         {
             'id': '3',

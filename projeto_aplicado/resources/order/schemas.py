@@ -100,3 +100,9 @@ class OrderItemList(SQLModel):
 
 
 OrderItemList.model_rebuild()
+
+
+class PublicProductData(SQLModel):
+    product_id: str
+    quantity: int
+    rating: Optional[float]
