@@ -67,3 +67,8 @@ class ProductList(BaseListResponse[ProductOut]):
 
 
 ProductList.model_rebuild()
+
+
+class PublicProduct(SQLModel):
+    name: str = Field(..., description="Nome do produto")
+    price: float = Field(..., description="Preço do produto", gt=0)

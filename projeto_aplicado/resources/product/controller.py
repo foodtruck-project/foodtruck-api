@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from typing import List
 
 from fastapi import (
     APIRouter,
@@ -6,7 +7,7 @@ from fastapi import (
     HTTPException,
     status,
 )
-from sqlmodel import Session
+from sqlmodel import Session, select # Adicione 'select' aqui
 
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.ext.database.db import get_session
@@ -19,6 +20,7 @@ from projeto_aplicado.resources.product.schemas import (
     ProductList,
     ProductOut,
     UpdateProductDTO,
+    PublicProduct,
 )
 from projeto_aplicado.resources.shared.schemas import BaseResponse
 from projeto_aplicado.resources.user.model import User, UserRole
@@ -36,6 +38,19 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
             detail='Only admin users can perform this action',
         )
     return current_user
+
+
+# Nova rota pública
+@router.get('/public', response_model=List[PublicProduct], status_code=HTTPStatus.OK)
+def fetch_public_products(session: Session = Depends(get_session)):
+    """
+    Retorna a lista de produtos disponíveis publicamente.
+    """
+    # Usa o repositório existente e retorna apenas os dados públicos.
+    # Isso evita a duplicação de lógica de consulta ao banco de dados.
+    repository = ProductRepository(session)
+    products_out = repository.get_all().items
+    return [PublicProduct(name=p.name, price=p.price) for p in products_out]
 
 
 @router.get(
@@ -130,7 +145,7 @@ def fetch_products(
                     'description': 'Hambúrguer artesanal com queijo',
                     'price': 25.90,
                     'category': 'burger',
-                    'image_url': 'https://example.com/x-burger.jpg',
+                    'image_url': '[https://example.com/x-burger.jpg](https://example.com/x-burger.jpg)',
                     'is_available': True,
                     'created_at': '2024-03-20T10:00:00',
                     'updated_at': '2024-03-20T10:00:00'
@@ -269,7 +284,7 @@ def create_product(
                 'description': 'Hambúrguer com bacon e queijo',
                 'price': 29.90,
                 'category': 'burger',
-                'image_url': 'https://example.com/x-bacon.jpg',
+                'image_url': '[https://example.com/x-bacon.jpg](https://example.com/x-bacon.jpg)',
                 'is_available': True
             },
             headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'}
