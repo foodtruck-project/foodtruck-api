@@ -12,6 +12,9 @@ from projeto_aplicado.resources.product.controller import router as item_router
 from projeto_aplicado.resources.public.products.controller import (
     router as public_products_router,
 )
+from projeto_aplicado.resources.public.order.controller import (
+    router as public_order_router,
+)
 from projeto_aplicado.resources.user.controller import router as user_router
 from projeto_aplicado.resources.user.model import User
 from projeto_aplicado.settings import get_settings
@@ -57,8 +60,12 @@ app = FastAPI(
             'description': 'Sistema de pedidos e gerenciamento de comandas',
         },
         {
-            'name': 'Public Products',
+            'name': 'Public',
             'description': 'Operações públicas relacionadas a produtos',
+        },
+        {
+            'name': 'Public',
+            'description': 'Operações públicas relacionadas a pedidos',
         },
     ],
 )
@@ -78,3 +85,4 @@ app.include_router(user_router)
 app.include_router(item_router)
 app.include_router(order_router)
 app.include_router(public_products_router)
+app.include_router(public_order_router)
