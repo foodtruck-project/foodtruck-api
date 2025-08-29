@@ -73,3 +73,4 @@ class PublicProduct(SQLModel):
     id: str = Field(..., description="The unique ID of the product")
     name: str = Field(..., description="Nome do produto")
     price: float = Field(..., description="Preço do produto", gt=0)
+    category: ProductCategory = Field(..., description="Categoria do produto")

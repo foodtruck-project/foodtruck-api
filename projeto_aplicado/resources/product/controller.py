@@ -50,7 +50,7 @@ def fetch_public_products(session: Session = Depends(get_session)):
     # Isso evita a duplicação de lógica de consulta ao banco de dados.
     repository = ProductRepository(session)
     products_out = repository.get_all().items
-    return [PublicProduct(id=p.id, name=p.name, price=p.price) for p in products_out]
+    return [PublicProduct(id=p.id, name=p.name, price=p.price, category = p.category) for p in products_out]
 
 
 
