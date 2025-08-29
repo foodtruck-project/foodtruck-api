@@ -14,10 +14,10 @@ settings = get_settings()
 
 OrderRepo = Annotated[OrderRepository, Depends(get_order_repository)]
 
-router = APIRouter(tags=['Public Orders'], prefix=f'{settings.API_PREFIX}/public/order')
+router = APIRouter(tags=['Public Orders'], prefix=f'{settings.API_PREFIX}/public/orders')
 
 @router.get('/', response_model=List[PublicProductData], status_code=HTTPStatus.OK)
-def fetch_public_order(repository: OrderRepo):
+def fetch_public_orders(repository: OrderRepo):
     """
     Retorna dados públicos de avaliações de produtos de todos os pedidos.
     """
