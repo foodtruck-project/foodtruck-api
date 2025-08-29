@@ -41,29 +41,7 @@ router = APIRouter(tags=['Pedidos'], prefix=f'{settings.API_PREFIX}/orders')
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-@router.get(
-    '/public_product_info',
-    response_model=List[PublicProductData],
-    status_code=HTTPStatus.OK,
-)
-def get_public_product_info(order_repository: OrderRepo):
-    """
-    Retorna uma lista de todos os produtos com suas quantidades e ratings, de todos os pedidos.
-    """
-    all_orders = order_repository.get_all()
-    product_info_list = []
-    
-    for order in all_orders:
-        for item in order.products:
-            product_info_list.append(
-                PublicProductData(
-                    product_id=item.product_id,
-                    quantity=item.quantity,
-                    rating=order.rating,
-                )
-            )
-            
-    return product_info_list
+
 
 
 @router.get(

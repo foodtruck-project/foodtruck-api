@@ -8,6 +8,7 @@ from projeto_aplicado.resources.product.model import Product
 from projeto_aplicado.resources.product.schemas import (
     ProductList,
     ProductOut,
+    PublicProduct,
     UpdateProductDTO,
 )
 from projeto_aplicado.resources.shared.repository import BaseRepository
@@ -34,6 +35,14 @@ class ProductRepository(BaseRepository[Product]):
             items=[ProductOut.model_validate(product) for product in products],
             pagination=pagination,
         )
+
+    def get_all_public(self) -> list[PublicProduct]:
+        """
+        Retorna uma lista de todos os produtos apenas com os campos públicos.
+        """
+        stmt = select(Product)
+        products = self.session.exec(stmt).all()
+        return [PublicProduct.model_validate(p) for p in products]
 
     def get_by_name(self, name: str) -> Product | None:
         stmt = select(Product).where(Product.name == name)
