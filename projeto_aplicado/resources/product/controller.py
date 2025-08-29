@@ -40,17 +40,7 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-# Nova rota pública
-@router.get('/public', response_model=List[PublicProduct], status_code=HTTPStatus.OK)
-def fetch_public_products(session: Session = Depends(get_session)):
-    """
-    Retorna a lista de produtos disponíveis publicamente.
-    """
-    # Usa o repositório existente e retorna apenas os dados públicos.
-    # Isso evita a duplicação de lógica de consulta ao banco de dados.
-    repository = ProductRepository(session)
-    products_out = repository.get_all().items
-    return [PublicProduct(id=p.id, name=p.name, price=p.price, category = p.category) for p in products_out]
+
 
 
 
