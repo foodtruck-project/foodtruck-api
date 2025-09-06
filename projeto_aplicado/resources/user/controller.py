@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.resources.user.model import User
 from projeto_aplicado.resources.user.repository import (
+    UserRepository,
     get_user_repository,
 )
 from projeto_aplicado.resources.user.schemas import (
@@ -19,10 +20,14 @@ from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
 
-UserSvc = Annotated[
-    UserService,
-    Depends(lambda repo=Depends(get_user_repository): UserService(repo)),
-]
+
+def get_user_service(
+    repo: UserRepository = Depends(get_user_repository),
+) -> UserService:
+    return UserService(repo)
+
+
+UserSvc = Annotated[UserService, Depends(get_user_service)]
 router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
