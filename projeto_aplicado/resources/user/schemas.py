@@ -46,6 +46,3 @@ class UserOut(SQLModel):
 
 class UserList(BaseListResponse[UserOut]):
     items: Sequence[UserOut] = Field(alias='users')
-
-    class Config:
-        populate_by_name = True
