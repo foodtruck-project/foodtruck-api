@@ -1,7 +1,7 @@
 import logging
 from http import HTTPStatus
-from zoneinfo import ZoneInfo
 from typing import Annotated, List
+from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
@@ -22,8 +22,8 @@ from projeto_aplicado.resources.order.schemas import (
     OrderItemList,
     OrderList,
     OrderOut,
+    PublicProductData,
     UpdateOrderDTO,
-    PublicProductData
 )
 from projeto_aplicado.resources.product.repository import (
     ProductRepository,
@@ -39,9 +39,6 @@ OrderRepo = Annotated[OrderRepository, Depends(get_order_repository)]
 ProductRepo = Annotated[ProductRepository, Depends(get_product_repository)]
 router = APIRouter(tags=['Pedidos'], prefix=f'{settings.API_PREFIX}/orders')
 CurrentUser = Annotated[User, Depends(get_current_user)]
-
-
-
 
 
 @router.get(
@@ -195,7 +192,8 @@ def fetch_order_by_id(
     """
 
     order = repository.get_by_id(order_id)
-    print(f"Order created_at: {order.created_at}, type: {type(order.created_at)}")
+    if not order:
+        raise HTTPException(status_code=404, detail='Order not found')
 
     if not order:
         raise HTTPException(
