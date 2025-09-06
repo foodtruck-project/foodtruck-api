@@ -1,13 +1,11 @@
 from http import HTTPStatus
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from projeto_aplicado.auth.security import get_current_user
-from projeto_aplicado.resources.base.schemas import Pagination
-from projeto_aplicado.resources.user.model import User, UserRole
+from projeto_aplicado.resources.user.model import User
 from projeto_aplicado.resources.user.repository import (
-    UserRepository,
     get_user_repository,
 )
 from projeto_aplicado.resources.user.schemas import (
@@ -16,10 +14,15 @@ from projeto_aplicado.resources.user.schemas import (
     UserList,
     UserOut,
 )
+from projeto_aplicado.resources.user.service import UserService
 from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
-UserRepo = Annotated[UserRepository, Depends(get_user_repository)]
+
+UserSvc = Annotated[
+    UserService,
+    Depends(lambda repo=Depends(get_user_repository): UserService(repo)),
+]
 router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
@@ -116,48 +119,19 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
     },
 )
 def fetch_users(
-    repository: UserRepo,
+    service: UserSvc,
     current_user: CurrentUser,
     offset: int = 0,
     limit: int = 100,
 ):
     """
     Lista usuários do sistema com paginação.
-
     - **Apenas administradores podem acessar.**
     - Retorna lista de usuários e informações de paginação.
     """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You are not allowed to fetch users',
-        )
-
-    users = repository.get_all(offset=offset, limit=limit)
-    total_count = repository.get_total_count()
-    total_pages = (total_count + limit - 1) // limit if limit > 0 else 0
-    page = (offset // limit) + 1 if limit > 0 else 1
-    return UserList(
-        items=[
-            UserOut(
-                id=user.id,
-                username=user.username,
-                full_name=user.full_name,
-                email=user.email,
-                role=user.role,
-                created_at=user.created_at,
-                updated_at=user.updated_at,
-            )
-            for user in users
-        ],
-        pagination=Pagination(
-            offset=offset,
-            limit=limit,
-            total_count=total_count,
-            total_pages=total_pages,
-            page=page,
-        ),
-    )
+    service.ensure_admin(current_user)
+    users = service.list_users(offset=offset, limit=limit)
+    return service.to_user_list(users, offset, limit)
 
 
 @router.get(
@@ -241,33 +215,16 @@ def fetch_users(
 )
 def fetch_user_by_id(
     user_id: str,
-    repository: UserRepo,
+    service: UserSvc,
     current_user: CurrentUser,
 ):
     """
     Busca usuário pelo ID.
     - **Apenas administradores podem acessar.**
     """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You are not allowed to fetch users',
-        )
-
-    user = repository.get_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
-        )
-    return UserOut(
-        id=user.id,
-        username=user.username,
-        full_name=user.full_name,
-        email=user.email,
-        role=user.role,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-    )
+    service.ensure_admin(current_user)
+    user = service.get_user_by_id(user_id)
+    return service.to_user_out(user)
 
 
 @router.post(
@@ -371,7 +328,7 @@ def fetch_user_by_id(
 )
 def create_user(
     dto: CreateUserDTO,
-    repository: UserRepo,
+    service: UserSvc,
     current_user: CurrentUser,
 ):
     """
@@ -379,71 +336,31 @@ def create_user(
     - **Apenas administradores podem acessar.**
     - Retorna os dados do usuário criado.
     """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You are not allowed to create users',
-        )
-
-    user = User(**dto.model_dump())
-    repository.create(user)
-    return UserOut(
-        id=user.id,
-        username=user.username,
-        full_name=user.full_name,
-        email=user.email,
-        role=user.role,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-    )
+    service.ensure_admin(current_user)
+    user = service.create_user(dto)
+    return service.to_user_out(user)
 
 
 @router.patch('/{user_id}', response_model=UserOut)
 def update_user(
     user_id: str,
     dto: UpdateUserDTO,
-    repository: UserRepo,
+    service: UserSvc,
     current_user: CurrentUser,
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You are not allowed to update users',
-        )
-
-    user = repository.get_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
-        )
-    repository.update(user, dto.model_dump(exclude_unset=True))
-    return UserOut(
-        id=user.id,
-        username=user.username,
-        full_name=user.full_name,
-        email=user.email,
-        role=user.role,
-        created_at=user.created_at,
-        updated_at=user.updated_at,
-    )
+    service.ensure_admin(current_user)
+    user = service.get_user_by_id(user_id)
+    user = service.update_user(user, dto)
+    return service.to_user_out(user)
 
 
 @router.delete('/{user_id}', status_code=HTTPStatus.OK)
 def delete_user(
     user_id: str,
-    repository: UserRepo,
+    service: UserSvc,
     current_user: CurrentUser,
 ):
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=HTTPStatus.FORBIDDEN,
-            detail='You are not allowed to delete users',
-        )
-
-    user = repository.get_by_id(user_id)
-    if not user:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail='User not found'
-        )
-    repository.delete(user)
+    service.ensure_admin(current_user)
+    user = service.get_user_by_id(user_id)
+    service.delete_user(user)
     return {'action': 'deleted', 'id': user_id}

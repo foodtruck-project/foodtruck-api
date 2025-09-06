@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from typing import Generic, Sequence, Type, TypeVar
 
+from sqlalchemy import func
 from sqlmodel import Session, SQLModel, select
 
 T = TypeVar('T', bound=SQLModel)
@@ -11,6 +12,10 @@ class AbstractRepository(ABC, Generic[T]):
     def __init__(self, session: Session, model: Type[T]):
         self.session = session
         self.model = model
+
+    @abstractmethod
+    def get_total_count(self) -> int:
+        pass
 
     @abstractmethod
     def create(self, entity: T) -> T:
@@ -36,6 +41,11 @@ class AbstractRepository(ABC, Generic[T]):
 class BaseRepository(AbstractRepository[T]):
     def __init__(self, session: Session, model: Type[T]):
         super().__init__(session, model)
+
+    def get_total_count(self) -> int:
+        return self.session.exec(
+            select(func.count()).select_from(self.model)
+        ).one()
 
     def create(self, entity: T) -> T:
         try:
