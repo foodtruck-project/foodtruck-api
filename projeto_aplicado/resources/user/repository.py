@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends
-from sqlmodel import Session, func, select
+from sqlmodel import Session, select
 
 from projeto_aplicado.ext.database.db import get_session
 from projeto_aplicado.resources.base.repository import (
@@ -17,10 +17,6 @@ def get_user_repository(session: Annotated[Session, Depends(get_session)]):
 class UserRepository(BaseRepository[User]):
     def __init__(self, session: Session):
         super().__init__(model=User, session=session)
-
-    def get_total_count(self) -> int:
-        stmt = select(func.count()).select_from(User)
-        return self.session.exec(stmt).one()
 
     def create(self, entity):
         return super().create(entity)
