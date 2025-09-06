@@ -19,8 +19,8 @@ def test_get_users(client: TestClient, users: list[User], admin_headers):
     response = client.get(f'{API_PREFIX}/users/', headers=admin_headers)
     assert response.status_code == HTTPStatus.OK
     assert response.headers['Content-Type'] == 'application/json'
-    assert len(response.json()['users']) == len(users)
-    assert response.json()['users'] == [
+    assert len(response.json()['items']) == len(users)
+    assert response.json()['items'] == [
         {
             'id': user.id,
             'username': user.username,

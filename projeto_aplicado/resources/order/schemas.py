@@ -3,9 +3,9 @@ from typing import Optional, Sequence
 from pydantic import Field, field_validator
 from sqlmodel import SQLModel
 
+from projeto_aplicado.resources.base.schemas import Pagination
 from projeto_aplicado.resources.order.enums import OrderStatus
 from projeto_aplicado.resources.order.model import OrderItem
-from projeto_aplicado.resources.shared.schemas import Pagination
 
 
 class CreateOrderItemDTO(SQLModel):

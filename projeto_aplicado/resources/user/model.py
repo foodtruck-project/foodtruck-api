@@ -3,7 +3,7 @@ from typing import Optional
 
 from sqlmodel import Field
 
-from projeto_aplicado.resources.shared.model import BaseModel
+from projeto_aplicado.resources.base.model import BaseModel
 
 
 class UserRole(str, Enum):

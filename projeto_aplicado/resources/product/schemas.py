@@ -3,11 +3,11 @@ from typing import Optional, Sequence
 from pydantic import Field, field_validator
 from sqlmodel import SQLModel
 
-from projeto_aplicado.resources.product.enums import ProductCategory
-from projeto_aplicado.resources.shared.schemas import (
+from projeto_aplicado.resources.base.schemas import (
     BaseListResponse,
     BaseModel,
 )
+from projeto_aplicado.resources.product.enums import ProductCategory
 
 # Centralized error messages
 PRODUCT_NOT_FOUND = 'Product not found'
@@ -60,7 +60,7 @@ class ProductList(BaseListResponse[ProductOut]):
     Response model for listing products with pagination.
     """
 
-    items: Sequence[ProductOut] = Field(alias='products')
+    items: Sequence[ProductOut]
 
 
 ProductList.model_rebuild()

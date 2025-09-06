@@ -1,7 +1,7 @@
 from sqlmodel import Field
 
+from projeto_aplicado.resources.base.model import BaseModel
 from projeto_aplicado.resources.product.enums import ProductCategory
-from projeto_aplicado.resources.shared.model import BaseModel
 
 
 class Product(BaseModel, table=True):
