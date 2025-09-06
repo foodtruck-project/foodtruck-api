@@ -1,5 +1,4 @@
 from http import HTTPStatus
-from typing import List
 
 from fastapi import (
     APIRouter,
@@ -7,12 +6,13 @@ from fastapi import (
     HTTPException,
     status,
 )
-from sqlmodel import Session, select # Adicione 'select' aqui
 
 from projeto_aplicado.auth.security import get_current_user
-from projeto_aplicado.ext.database.db import get_session
 from projeto_aplicado.resources.product.model import Product
-from projeto_aplicado.resources.product.repository import ProductRepository
+from projeto_aplicado.resources.product.repository import (
+    ProductRepository,
+    get_product_repository,
+)
 from projeto_aplicado.resources.product.schemas import (
     PRODUCT_ALREADY_EXISTS,
     PRODUCT_NOT_FOUND,
@@ -20,9 +20,8 @@ from projeto_aplicado.resources.product.schemas import (
     ProductList,
     ProductOut,
     UpdateProductDTO,
-    PublicProduct,
 )
-from projeto_aplicado.resources.shared.schemas import BaseResponse
+from projeto_aplicado.resources.shared.schemas import BaseResponse, Pagination
 from projeto_aplicado.resources.user.model import User, UserRole
 from projeto_aplicado.settings import get_settings
 
@@ -40,10 +39,6 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
-
-
-
-
 @router.get(
     '/',
     response_model=ProductList,
@@ -58,7 +53,7 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
                             {
                                 'id': '1',
                                 'name': 'X-Burger',
-                                'description': 'Hambúrguer artesanal com queijo',
+                                'description': 'Hambúrguer artesanal com queijo',  # noqa: E501
                                 'price': 25.90,
                                 'category': 'burger',
                                 'image_url': 'https://example.com/x-burger.jpg',
@@ -69,7 +64,7 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
                             {
                                 'id': '2',
                                 'name': 'Batata Frita',
-                                'description': 'Porção de batata frita crocante',
+                                'description': 'Porção de batata frita crocante',  # noqa: E501
                                 'price': 15.90,
                                 'category': 'side',
                                 'image_url': 'https://example.com/fries.jpg',
@@ -104,147 +99,69 @@ def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
 def fetch_products(
     offset: int = 0,
     limit: int = 100,
-    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    product_repository: ProductRepository = Depends(get_product_repository),
 ):
     """
-    Retorna a lista de produtos do sistema.
-
-    Args:
-        offset (int, optional): Número de registros para pular. Padrão: 0.
-        limit (int, optional): Limite de registros por página. Padrão: 100.
-        session (Session): Sessão do banco de dados.
-        current_user (User): Usuário autenticado.
-
-    Returns:
-        ProductList: Lista de produtos com informações de paginação.
-
-    Examples:
-        ```python
-        # Exemplo de requisição
-        response = await client.get(
-            '/api/v1/products',
-            headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'}
-        )
-
-        # Exemplo de resposta (200 OK)
-        {
-            'items': [
-                {
-                    'id': '1',
-                    'name': 'X-Burger',
-                    'description': 'Hambúrguer artesanal com queijo',
-                    'price': 25.90,
-                    'category': 'burger',
-                    'image_url': '[https://example.com/x-burger.jpg](https://example.com/x-burger.jpg)',
-                    'is_available': True,
-                    'created_at': '2024-03-20T10:00:00',
-                    'updated_at': '2024-03-20T10:00:00'
-                }
-            ],
-            'pagination': {
-                'offset': 0,
-                'limit': 100,
-                'total_count': 1,
-                'total_pages': 1,
-                'page': 1
-            }
-        }
-        ```
+    Retorna a lista de produtos do sistema com paginação.
     """
-    repository = ProductRepository(session)
-    return repository.get_all(offset=offset, limit=limit)
+    products = product_repository.get_all(offset=offset, limit=limit)
+    total_count = product_repository.get_total_count()
+    total_pages = (total_count + limit - 1) // limit if limit > 0 else 0
+    page = (offset // limit) + 1 if limit > 0 else 1
+    return ProductList(
+        items=[
+            ProductOut(
+                id=product.id,
+                name=product.name,
+                price=product.price,
+                description=product.description,
+                category=product.category,
+                created_at=product.created_at,
+                updated_at=product.updated_at,
+            )
+            for product in products
+        ],
+        pagination=Pagination(
+            offset=offset,
+            limit=limit,
+            total_count=total_count,
+            total_pages=total_pages,
+            page=page,
+        ),
+    )
 
 
 @router.get('/{product_id}', response_model=ProductOut)
 def get_product_by_id(
     product_id: str,
-    session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    product_repository: ProductRepository = Depends(get_product_repository),
 ):
     """
     Get a product by its ID.
     """
-    repository = ProductRepository(session)
-    product = repository.get_by_id(product_id)
+    product = product_repository.get_by_id(product_id)
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=PRODUCT_NOT_FOUND,
         )
-    return product
+    return ProductOut(
+        id=product.id,
+        name=product.name,
+        price=product.price,
+        description=product.description,
+        category=product.category,
+        created_at=product.created_at,
+        updated_at=product.updated_at,
+    )
 
 
-@router.post(
-    '/',
-    response_model=BaseResponse,
-    status_code=status.HTTP_201_CREATED,
-    responses={
-        201: {
-            'description': 'Produto criado com sucesso',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'id': '3',
-                        'action': 'created',
-                    }
-                }
-            },
-        },
-        400: {
-            'description': 'Dados inválidos',
-            'content': {
-                'application/json': {
-                    'examples': {
-                        'invalid_price': {
-                            'value': {
-                                'detail': 'Price must be greater than zero'
-                            },
-                            'summary': 'Preço inválido',
-                        },
-                        'invalid_category': {
-                            'value': {'detail': 'Invalid category'},
-                            'summary': 'Categoria inválida',
-                        },
-                    }
-                }
-            },
-        },
-        401: {
-            'description': 'Não autorizado',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Not authenticated',
-                    }
-                }
-            },
-        },
-        403: {
-            'description': 'Acesso negado',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Only admin users can perform this action',
-                    }
-                }
-            },
-        },
-        409: {
-            'description': 'Conflito',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Product already exists',
-                    }
-                }
-            },
-        },
-    },
-)
+@router.post('/', response_model=BaseResponse, status_code=HTTPStatus.CREATED)
 def create_product(
     product_dto: CreateProductDTO,
-    session: Session = Depends(get_session),
+    product_repository: ProductRepository = Depends(get_product_repository),
     current_user: User = Depends(get_admin_user),
 ):
     """
@@ -287,16 +204,15 @@ def create_product(
             'action': 'created'
         }
         ```
-    """
-    repository = ProductRepository(session)
-    existing_product = repository.find_by_name(product_dto.name)
+    """  # noqa: E501
+    existing_product = product_repository.get_by_name(product_dto.name)
     if existing_product:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=PRODUCT_ALREADY_EXISTS,
         )
     product = Product.create(product_dto)
-    repository.create(product)
+    product_repository.create(product)
     return BaseResponse(id=product.id, action='created')
 
 
@@ -304,40 +220,44 @@ def create_product(
 def update_product(
     product_id: str,
     product_dto: UpdateProductDTO,
-    session: Session = Depends(get_session),
+    product_repository: ProductRepository = Depends(get_product_repository),
     current_user: User = Depends(get_admin_user),
 ):
     """
     Update an existing product.
     """
-    repository = ProductRepository(session)
-    product = repository.update(product_id, product_dto)
+    product = product_repository.get_by_id(product_id)
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=PRODUCT_NOT_FOUND,
         )
-    return BaseResponse(id=product.id, action='updated')
+    updated_product = product_repository.update(
+        product, product_dto.model_dump(exclude_unset=True)
+    )
+    return BaseResponse(id=updated_product.id, action='updated')
 
 
 @router.patch('/{product_id}', response_model=BaseResponse)
 def patch_product(
     product_id: str,
     product_dto: UpdateProductDTO,
-    session: Session = Depends(get_session),
+    product_repository: ProductRepository = Depends(get_product_repository),
     current_user: User = Depends(get_admin_user),
 ):
     """
     Partially update an existing product.
     """
-    repository = ProductRepository(session)
-    product = repository.update(product_id, product_dto)
+    product = product_repository.get_by_id(product_id)
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=PRODUCT_NOT_FOUND,
         )
-    return BaseResponse(id=product.id, action='updated')
+    updated_product = product_repository.update(
+        product, product_dto.model_dump(exclude_unset=True)
+    )
+    return BaseResponse(id=updated_product.id, action='updated')
 
 
 @router.delete(
@@ -345,16 +265,17 @@ def patch_product(
 )
 def delete_product(
     product_id: str,
-    session: Session = Depends(get_session),
+    product_repository: ProductRepository = Depends(get_product_repository),
     current_user: User = Depends(get_admin_user),
 ):
     """
     Delete a product.
     """
-    repository = ProductRepository(session)
-    if not repository.delete(product_id):
+    product = product_repository.get_by_id(product_id)
+    if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=PRODUCT_NOT_FOUND,
         )
+    product_repository.delete(product)
     return BaseResponse(id=product_id, action='deleted')

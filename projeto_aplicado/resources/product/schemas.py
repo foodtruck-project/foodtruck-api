@@ -1,6 +1,6 @@
 from typing import Optional, Sequence
 
-from pydantic import Field, validator
+from pydantic import Field, field_validator
 from sqlmodel import SQLModel
 
 from projeto_aplicado.resources.product.enums import ProductCategory
@@ -24,7 +24,7 @@ class CreateProductDTO(SQLModel):
     description: Optional[str] = None
     category: ProductCategory
 
-    @validator('name')
+    @field_validator('name')
     def name_must_not_be_empty(cls, v):
         if not v.strip():
             raise ValueError('Name must not be empty')
@@ -41,7 +41,7 @@ class UpdateProductDTO(SQLModel):
     description: Optional[str] = None
     category: Optional[ProductCategory] = None
 
-    @validator('name')
+    @field_validator('name')
     def name_must_not_be_empty(cls, v):
         if v is not None and not v.strip():
             raise ValueError('Name must not be empty')
@@ -62,15 +62,12 @@ class ProductList(BaseListResponse[ProductOut]):
 
     items: Sequence[ProductOut] = Field(alias='products')
 
-    class Config:
-        populate_by_name = True
-
 
 ProductList.model_rebuild()
 
 
 class PublicProduct(SQLModel):
-    id: str = Field(..., description="The unique ID of the product")
-    name: str = Field(..., description="Nome do produto")
-    price: float = Field(..., description="Preço do produto", gt=0)
-    category: ProductCategory = Field(..., description="Categoria do produto")
+    id: str = Field(..., description='The unique ID of the product')
+    name: str = Field(..., description='Nome do produto')
+    price: float = Field(..., description='Preço do produto', gt=0)
+    category: ProductCategory = Field(..., description='Categoria do produto')
