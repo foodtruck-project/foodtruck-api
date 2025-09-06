@@ -8,6 +8,7 @@ from fastapi import (
 )
 
 from projeto_aplicado.auth.security import get_current_user
+from projeto_aplicado.resources.base.schemas import BaseResponse, Pagination
 from projeto_aplicado.resources.product.model import Product
 from projeto_aplicado.resources.product.repository import (
     ProductRepository,
@@ -21,7 +22,6 @@ from projeto_aplicado.resources.product.schemas import (
     ProductOut,
     UpdateProductDTO,
 )
-from projeto_aplicado.resources.shared.schemas import BaseResponse, Pagination
 from projeto_aplicado.resources.user.model import User, UserRole
 from projeto_aplicado.settings import get_settings
 

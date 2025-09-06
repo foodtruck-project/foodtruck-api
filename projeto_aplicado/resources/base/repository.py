@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 from typing import Generic, Sequence, Type, TypeVar
 
 from sqlmodel import Session, SQLModel, select
@@ -58,6 +59,9 @@ class BaseRepository(AbstractRepository[T]):
             for key, value in update_data.items():
                 if value is not None:
                     setattr(entity, key, value)
+            # Update the updated_at field if it exists
+            if hasattr(entity, 'updated_at'):
+                setattr(entity, 'updated_at', datetime.now(timezone.utc))
             self.session.commit()
             self.session.refresh(entity)
             return entity

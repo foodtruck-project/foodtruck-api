@@ -5,7 +5,7 @@ from pydantic import EmailStr, Field, field_validator
 from sqlmodel import SQLModel
 
 from projeto_aplicado.auth.password import get_password_hash
-from projeto_aplicado.resources.shared.schemas import (
+from projeto_aplicado.resources.base.schemas import (
     BaseListResponse,
 )
 from projeto_aplicado.resources.user.model import UserRole
@@ -45,4 +45,4 @@ class UserOut(SQLModel):
 
 
 class UserList(BaseListResponse[UserOut]):
-    items: Sequence[UserOut] = Field(alias='users')
+    items: Sequence[UserOut]

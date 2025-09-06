@@ -14,8 +14,8 @@ def test_get_products(client, itens, admin_headers):
     response = client.get(f'{API_PREFIX}/products/', headers=admin_headers)
     assert response.status_code == HTTPStatus.OK
     assert response.headers['Content-Type'] == 'application/json'
-    assert len(response.json()['products']) == len(itens)
-    assert response.json()['products'] == [
+    assert len(response.json()['items']) == len(itens)
+    assert response.json()['items'] == [
         {
             'id': str(item.id),
             'description': item.description,

@@ -2,8 +2,8 @@ from typing import List
 
 from sqlmodel import Field, Relationship
 
+from projeto_aplicado.resources.base.model import BaseModel
 from projeto_aplicado.resources.order.enums import OrderStatus
-from projeto_aplicado.resources.shared.model import BaseModel
 from projeto_aplicado.utils import generate_locator
 
 

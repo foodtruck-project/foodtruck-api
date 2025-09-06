@@ -1,16 +1,15 @@
-import logging
 from http import HTTPStatus
-from typing import Annotated, List
+from typing import Annotated
 from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    status,
 )
 
 from projeto_aplicado.auth.security import get_current_user
+from projeto_aplicado.resources.base.schemas import BaseResponse, Pagination
 from projeto_aplicado.resources.order.enums import OrderStatus
 from projeto_aplicado.resources.order.model import Order, OrderItem
 from projeto_aplicado.resources.order.repository import (
@@ -22,14 +21,12 @@ from projeto_aplicado.resources.order.schemas import (
     OrderItemList,
     OrderList,
     OrderOut,
-    PublicProductData,
     UpdateOrderDTO,
 )
 from projeto_aplicado.resources.product.repository import (
     ProductRepository,
     get_product_repository,
 )
-from projeto_aplicado.resources.shared.schemas import BaseResponse, Pagination
 from projeto_aplicado.resources.user.model import User, UserRole
 from projeto_aplicado.settings import get_settings
 
@@ -367,7 +364,7 @@ async def create_order(
         }
         ```
     """  # noqa: E501
-    if current_user.role not in [UserRole.ADMIN, UserRole.ATTENDANT]:
+    if current_user.role not in {UserRole.ADMIN, UserRole.ATTENDANT}:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
             detail='You are not allowed to create orders',
@@ -426,7 +423,7 @@ def update_order(
             detail='Order not found',
         )
 
-    repository.update(existing_order, dto)
+    repository.update(existing_order, dto.model_dump(exclude_unset=True))
     return BaseResponse(id=existing_order.id, action='updated')
 
 
@@ -446,7 +443,7 @@ def delete_order(
     Raises:
         HTTPException: If the order with the specified ID is not found.
     """
-    if current_user.role not in [UserRole.ADMIN, UserRole.ATTENDANT]:
+    if current_user.role not in {UserRole.ADMIN, UserRole.ATTENDANT}:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
             detail='You are not allowed to delete orders',
