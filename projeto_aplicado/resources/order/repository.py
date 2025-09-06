@@ -4,8 +4,11 @@ from fastapi import Depends
 from sqlmodel import Session, func, select
 
 from projeto_aplicado.ext.database.db import get_session
-from projeto_aplicado.resources.order.model import Order
-from projeto_aplicado.resources.order.schemas import UpdateOrderDTO
+from projeto_aplicado.resources.order.model import Order, OrderItem
+from projeto_aplicado.resources.order.schemas import (
+    PublicProductData,
+    UpdateOrderDTO,
+)
 from projeto_aplicado.resources.shared.repository import BaseRepository
 
 
@@ -27,3 +30,29 @@ class OrderRepository(BaseRepository[Order]):
     def update(self, order: Order, dto: UpdateOrderDTO) -> Order:
         update_data = dto.model_dump(exclude_unset=True)
         return super().update(order, update_data)
+
+    def get_all_public(self) -> list[PublicProductData]:
+        """
+        Retorna uma lista de todos os produtos com suas quantidades e ratings, de todos os pedidos.
+        Esta é uma consulta otimizada que une as tabelas Order e OrderItem.
+        """
+        stmt = (
+            select(
+                OrderItem.product_id,
+                OrderItem.quantity,
+                Order.rating,
+            )
+            .join(Order)
+            .where(Order.rating.isnot(None))
+        )
+
+        results = self.session.exec(stmt).all()
+
+        return [
+            PublicProductData(
+                product_id=row.product_id,
+                quantity=row.quantity,
+                rating=row.rating,
+            )
+            for row in results
+        ]

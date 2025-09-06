@@ -20,6 +20,7 @@ dependencies = [
     "python-ulid>=3.0.0,<4.0.0",
     "redis>=6.1.0,<7.0.0",
     "testcontainers>=4.10.0",
+    "httpx>=0.27.0",
 ]
 
 [dependency-groups]
@@ -59,7 +60,7 @@ testpaths = ["tests", "projeto_aplicado/cli/tests"]
 [tool.taskipy.tasks]
 lint = 'ruff check . && ruff check . --diff'
 format = 'ruff check . --fix && ruff format .'
-dev = 'fastapi dev projeto_aplicado/app.py'
+dev = 'fastapi dev projeto_aplicado/app.py --reload'
 test = 'pytest -s -x --cov=projeto_aplicado'
 run = 'fastapi run projeto_aplicado/app.py --host 0.0.0.0 --port 8000'
 export = 'uv pip compile pyproject.toml --output-file requirements.txt'
@@ -72,4 +73,4 @@ migrate-history = 'alembic history'
 migrate-current = 'alembic current'
 migrate-downgrade = 'alembic downgrade -1'
 migrate-upgrade = 'alembic upgrade +1'
-migrate-stamp = 'alembic stamp head'
+test-run-mode = 'python scripts/test_settings.py'
