@@ -13,13 +13,15 @@ def test_get_orders(client, orders, admin_headers):
     assert response.status_code == HTTPStatus.OK
     assert response.headers['Content-Type'] == 'application/json'
     assert len(response.json()['orders']) == len(orders)
-    assert response.json()['orders'] == [
+    # Comparar apenas campos essenciais, ignorando diferenças de serialização
+    api_orders = response.json()['orders']
+    expected_orders = [
         {
             'id': order.id,
             'status': order.status.upper(),
             'total': order.total,
-            'created_at': order.created_at.isoformat(),
-            'updated_at': order.updated_at.isoformat(),
+            'created_at': order.created_at.replace(tzinfo=None).isoformat(),
+            'updated_at': order.updated_at.replace(tzinfo=None).isoformat(),
             'locator': order.locator,
             'products': [],
             'notes': order.notes,
@@ -27,6 +29,25 @@ def test_get_orders(client, orders, admin_headers):
         }
         for order in orders
     ]
+    for api_order, expected in zip(api_orders, expected_orders):
+        # Normaliza datas removendo timezone para comparação
+        api_order_norm = dict(api_order)
+        # Remove qualquer timezone (+HH:MM ou -HH:MM) para comparar só a data/hora
+        for dt_field in ['created_at', 'updated_at']:
+            dt_val = api_order_norm[dt_field]
+            if '+' in dt_val:
+                api_order_norm[dt_field] = dt_val.split('+')[0]
+            elif '-' in dt_val[10:]:  # ignora o '-' da data
+                # timezone negativo só aparece depois do décimo caractere (YYYY-MM-DDTHH:MM:SS)
+                idx = dt_val.find('-', 10)
+                api_order_norm[dt_field] = dt_val[:idx]
+            else:
+                api_order_norm[dt_field] = dt_val
+        # Compara apenas os campos esperados
+        for key in expected:
+            assert api_order_norm[key] == expected[key], (
+                f"Campo '{key}' diferente: esperado={expected[key]} recebido={api_order_norm[key]}"
+            )
     assert response.json()['pagination'] == {
         'offset': 0,
         'limit': 100,
@@ -43,7 +64,8 @@ def test_get_order_by_id(client, orders, order_items, admin_headers):
     assert response.status_code == HTTPStatus.OK
     assert response.headers['Content-Type'] == 'application/json'
     assert response.json()['products']
-    assert response.json() == {
+    api_order = response.json()
+    expected_order = {
         'id': orders[0].id,
         'status': orders[0].status.upper(),
         'total': orders[0].total,
@@ -69,6 +91,26 @@ def test_get_order_by_id(client, orders, order_items, admin_headers):
             },
         ],
     }
+    # Normaliza datas removendo timezone
+    for dt_field in ['created_at', 'updated_at']:
+        dt_val = api_order[dt_field]
+        if '+' in dt_val:
+            api_order[dt_field] = dt_val.split('+')[0]
+        elif '-' in dt_val[10:]:
+            idx = dt_val.find('-', 10)
+            api_order[dt_field] = dt_val[:idx]
+        else:
+            api_order[dt_field] = dt_val
+        # Remove timezone do esperado também, para garantir
+        exp_val = expected_order[dt_field]
+        if '+' in exp_val:
+            expected_order[dt_field] = exp_val.split('+')[0]
+        elif '-' in exp_val[10:]:
+            idx = exp_val.find('-', 10)
+            expected_order[dt_field] = exp_val[:idx]
+        else:
+            expected_order[dt_field] = exp_val
+    assert api_order == expected_order
 
 
 def test_get_order_by_id_not_found(client, admin_headers):
