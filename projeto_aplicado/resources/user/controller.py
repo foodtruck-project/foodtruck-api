@@ -28,40 +28,60 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
     '/',
     response_model=UserList,
     status_code=HTTPStatus.OK,
+    summary='Listar usuários',
+    description="""
+    Retorna uma lista paginada de usuários do sistema. Apenas administradores podem acessar este endpoint.
+
+    **Parâmetros:**
+    - **offset**: Número de registros para pular (padrão: 0)
+    - **limit**: Limite de registros por página (padrão: 100)
+
+    **Exemplo de requisição:**
+    ```bash
+    curl -X GET \
+      -H "Authorization: Bearer <token>" \
+      "http://localhost:8000/api/v1/users?offset=0&limit=10"
+    ```
+    """,  # noqa: E501
     responses={
         200: {
             'description': 'Lista de usuários retornada com sucesso',
             'content': {
                 'application/json': {
-                    'example': {
-                        'items': [
-                            {
-                                'id': '1',
-                                'username': 'admin',
-                                'full_name': 'Admin User',
-                                'email': 'admin@example.com',
-                                'role': 'admin',
-                                'created_at': '2024-03-20T10:00:00',
-                                'updated_at': '2024-03-20T10:00:00',
+                    'examples': {
+                        'default': {
+                            'summary': 'Exemplo de resposta',
+                            'value': {
+                                'items': [
+                                    {
+                                        'id': '1',
+                                        'username': 'admin',
+                                        'full_name': 'Admin User',
+                                        'email': 'admin@example.com',
+                                        'role': 'admin',
+                                        'created_at': '2024-03-20T10:00:00',
+                                        'updated_at': '2024-03-20T10:00:00',
+                                    },
+                                    {
+                                        'id': '2',
+                                        'username': 'attendant',
+                                        'full_name': 'Attendant User',
+                                        'email': 'attendant@example.com',
+                                        'role': 'attendant',
+                                        'created_at': '2024-03-20T10:00:00',
+                                        'updated_at': '2024-03-20T10:00:00',
+                                    },
+                                ],
+                                'pagination': {
+                                    'offset': 0,
+                                    'limit': 100,
+                                    'total_count': 2,
+                                    'total_pages': 1,
+                                    'page': 1,
+                                },
                             },
-                            {
-                                'id': '2',
-                                'username': 'attendant',
-                                'full_name': 'Attendant User',
-                                'email': 'attendant@example.com',
-                                'role': 'attendant',
-                                'created_at': '2024-03-20T10:00:00',
-                                'updated_at': '2024-03-20T10:00:00',
-                            },
-                        ],
-                        'pagination': {
-                            'offset': 0,
-                            'limit': 100,
-                            'total_count': 2,
-                            'total_pages': 1,
-                            'page': 1,
                         },
-                    }
+                    },
                 }
             },
         },
@@ -69,9 +89,12 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
             'description': 'Não autorizado',
             'content': {
                 'application/json': {
-                    'example': {
-                        'detail': 'Not authenticated',
-                    }
+                    'examples': {
+                        'not_authenticated': {
+                            'summary': 'Usuário não autenticado',
+                            'value': {'detail': 'Not authenticated'},
+                        },
+                    },
                 }
             },
         },
@@ -79,9 +102,14 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
             'description': 'Acesso negado',
             'content': {
                 'application/json': {
-                    'example': {
-                        'detail': 'You are not allowed to fetch users',
-                    }
+                    'examples': {
+                        'forbidden': {
+                            'summary': 'Sem permissão',
+                            'value': {
+                                'detail': 'You are not allowed to fetch users'
+                            },
+                        },
+                    },
                 }
             },
         },
@@ -94,52 +122,10 @@ def fetch_users(
     limit: int = 100,
 ):
     """
-    Retorna a lista de usuários do sistema.
+    Lista usuários do sistema com paginação.
 
-    Args:
-        repository (UserRepository): Repositório de usuários.
-        current_user (User): Usuário autenticado.
-        offset (int, optional): Número de registros para pular. Padrão: 0.
-        limit (int, optional): Limite de registros por página. Padrão: 100.
-
-    Returns:
-        UserList: Lista de usuários com informações de paginação.
-
-    Raises:
-        HTTPException:
-            - Se o usuário não estiver autenticado (401)
-            - Se o usuário não tiver permissão (403)
-
-    Examples:
-        ```python
-        # Exemplo de requisição
-        response = await client.get(
-            '/api/v1/users',
-            headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'}
-        )
-
-        # Exemplo de resposta (200 OK)
-        {
-            'items': [
-                {
-                    'id': '1',
-                    'username': 'admin',
-                    'full_name': 'Admin User',
-                    'email': 'admin@example.com',
-                    'role': 'admin',
-                    'created_at': '2024-03-20T10:00:00',
-                    'updated_at': '2024-03-20T10:00:00'
-                }
-            ],
-            'pagination': {
-                'offset': 0,
-                'limit': 100,
-                'total_count': 1,
-                'total_pages': 1,
-                'page': 1
-            }
-        }
-        ```
+    - **Apenas administradores podem acessar.**
+    - Retorna lista de usuários e informações de paginação.
     """
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
@@ -174,12 +160,94 @@ def fetch_users(
     )
 
 
-@router.get('/{user_id}', response_model=UserOut)
+@router.get(
+    '/{user_id}',
+    response_model=UserOut,
+    summary='Buscar usuário por ID',
+    description="""
+    Retorna os dados de um usuário específico pelo seu ID. Apenas administradores podem acessar este endpoint.
+
+    **Exemplo de requisição:**
+    ```bash
+    curl -X GET \
+      -H "Authorization: Bearer <token>" \
+      "http://localhost:8000/api/v1/users/1"
+    ```
+    """,  # noqa: E501
+    responses={
+        200: {
+            'description': 'Usuário encontrado',
+            'content': {
+                'application/json': {
+                    'examples': {
+                        'default': {
+                            'summary': 'Exemplo de resposta',
+                            'value': {
+                                'id': '1',
+                                'username': 'admin',
+                                'full_name': 'Admin User',
+                                'email': 'admin@example.com',
+                                'role': 'admin',
+                                'created_at': '2024-03-20T10:00:00',
+                                'updated_at': '2024-03-20T10:00:00',
+                            },
+                        },
+                    },
+                }
+            },
+        },
+        401: {
+            'description': 'Não autorizado',
+            'content': {
+                'application/json': {
+                    'examples': {
+                        'not_authenticated': {
+                            'summary': 'Usuário não autenticado',
+                            'value': {'detail': 'Not authenticated'},
+                        },
+                    },
+                }
+            },
+        },
+        403: {
+            'description': 'Acesso negado',
+            'content': {
+                'application/json': {
+                    'examples': {
+                        'forbidden': {
+                            'summary': 'Sem permissão',
+                            'value': {
+                                'detail': 'You are not allowed to fetch users'
+                            },
+                        },
+                    },
+                }
+            },
+        },
+        404: {
+            'description': 'Usuário não encontrado',
+            'content': {
+                'application/json': {
+                    'examples': {
+                        'not_found': {
+                            'summary': 'Usuário não encontrado',
+                            'value': {'detail': 'User not found'},
+                        },
+                    },
+                }
+            },
+        },
+    },
+)
 def fetch_user_by_id(
     user_id: str,
     repository: UserRepo,
     current_user: CurrentUser,
 ):
+    """
+    Busca usuário pelo ID.
+    - **Apenas administradores podem acessar.**
+    """
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=HTTPStatus.FORBIDDEN,
@@ -206,20 +274,38 @@ def fetch_user_by_id(
     '/',
     response_model=UserOut,
     status_code=HTTPStatus.CREATED,
+    summary='Criar novo usuário',
+    description="""
+    Cria um novo usuário no sistema. Apenas administradores podem acessar este endpoint.
+
+    **Exemplo de requisição:**
+    ```bash
+    curl -X POST \
+      -H "Authorization: Bearer <token>" \
+      -H "Content-Type: application/json" \
+      -d '{"username": "newuser", "full_name": "New User", "email": "new@example.com", "password": "secure_password123", "role": "attendant"}' \
+      "http://localhost:8000/api/v1/users"
+    ```
+    """,  # noqa: E501
     responses={
         201: {
             'description': 'Usuário criado com sucesso',
             'content': {
                 'application/json': {
-                    'example': {
-                        'id': '3',
-                        'username': 'newuser',
-                        'full_name': 'New User',
-                        'email': 'new@example.com',
-                        'role': 'attendant',
-                        'created_at': '2024-03-20T10:00:00',
-                        'updated_at': '2024-03-20T10:00:00',
-                    }
+                    'examples': {
+                        'default': {
+                            'summary': 'Exemplo de resposta',
+                            'value': {
+                                'id': '3',
+                                'username': 'newuser',
+                                'full_name': 'New User',
+                                'email': 'new@example.com',
+                                'role': 'attendant',
+                                'created_at': '2024-03-20T10:00:00',
+                                'updated_at': '2024-03-20T10:00:00',
+                            },
+                        },
+                    },
                 }
             },
         },
@@ -229,14 +315,14 @@ def fetch_user_by_id(
                 'application/json': {
                     'examples': {
                         'invalid_email': {
-                            'value': {'detail': 'Invalid email format'},
                             'summary': 'Email inválido',
+                            'value': {'detail': 'Invalid email format'},
                         },
                         'weak_password': {
-                            'value': {'detail': 'Password is too weak'},
                             'summary': 'Senha fraca',
+                            'value': {'detail': 'Password is too weak'},
                         },
-                    }
+                    },
                 }
             },
         },
@@ -244,9 +330,12 @@ def fetch_user_by_id(
             'description': 'Não autorizado',
             'content': {
                 'application/json': {
-                    'example': {
-                        'detail': 'Not authenticated',
-                    }
+                    'examples': {
+                        'not_authenticated': {
+                            'summary': 'Usuário não autenticado',
+                            'value': {'detail': 'Not authenticated'},
+                        },
+                    },
                 }
             },
         },
@@ -254,9 +343,14 @@ def fetch_user_by_id(
             'description': 'Acesso negado',
             'content': {
                 'application/json': {
-                    'example': {
-                        'detail': 'You are not allowed to create users',
-                    }
+                    'examples': {
+                        'forbidden': {
+                            'summary': 'Sem permissão',
+                            'value': {
+                                'detail': 'You are not allowed to create users'
+                            },
+                        },
+                    },
                 }
             },
         },
@@ -264,9 +358,12 @@ def fetch_user_by_id(
             'description': 'Conflito',
             'content': {
                 'application/json': {
-                    'example': {
-                        'detail': 'Email already registered',
-                    }
+                    'examples': {
+                        'email_conflict': {
+                            'summary': 'Email já registrado',
+                            'value': {'detail': 'Email already registered'},
+                        },
+                    },
                 }
             },
         },
@@ -278,49 +375,9 @@ def create_user(
     current_user: CurrentUser,
 ):
     """
-    Cria um novo usuário no sistema.
-
-    Args:
-        dto (CreateUserDTO): Dados do usuário a ser criado.
-        repository (UserRepository): Repositório de usuários.
-        current_user (User): Usuário autenticado.
-
-    Returns:
-        UserOut: Dados do usuário criado.
-
-    Raises:
-        HTTPException:
-            - Se os dados forem inválidos (400)
-            - Se o usuário não estiver autenticado (401)
-            - Se o usuário não tiver permissão (403)
-            - Se o email já estiver registrado (409)
-
-    Examples:
-        ```python
-        # Exemplo de requisição
-        response = await client.post(
-            '/api/v1/users',
-            json={
-                'username': 'newuser',
-                'full_name': 'New User',
-                'email': 'new@example.com',
-                'password': 'secure_password123',
-                'role': 'attendant'
-            },
-            headers={'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'}
-        )
-
-        # Exemplo de resposta (201 Created)
-        {
-            'id': '3',
-            'username': 'newuser',
-            'full_name': 'New User',
-            'email': 'new@example.com',
-            'role': 'attendant',
-            'created_at': '2024-03-20T10:00:00',
-            'updated_at': '2024-03-20T10:00:00'
-        }
-        ```
+    Cria um novo usuário.
+    - **Apenas administradores podem acessar.**
+    - Retorna os dados do usuário criado.
     """
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
@@ -341,9 +398,6 @@ def create_user(
     )
 
 
-
-
-
 @router.patch('/{user_id}', response_model=UserOut)
 def update_user(
     user_id: str,
@@ -362,7 +416,7 @@ def update_user(
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail='User not found'
         )
-    repository.update(user, dto)
+    repository.update(user, dto.model_dump(exclude_unset=True))
     return UserOut(
         id=user.id,
         username=user.username,
