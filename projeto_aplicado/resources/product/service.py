@@ -59,10 +59,10 @@ class ProductService:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT, detail=PRODUCT_ALREADY_EXISTS
             )
-        product = Product.create(dto)
+        new_product = Product.create(dto)
         await self.product_cache.invalidate_list()
-        await self.product_cache.invalidate_product(product.id)
-        created = self.repository.create(product)
+        await self.product_cache.invalidate_product(new_product.id)
+        created = self.repository.create(new_product)
         return created
 
     async def update_product(
