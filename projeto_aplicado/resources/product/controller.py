@@ -1,46 +1,35 @@
 from http import HTTPStatus
+from typing import Annotated
 
 from fastapi import (
     APIRouter,
     Depends,
-    HTTPException,
-    status,
 )
 
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.resources.base.schemas import BaseResponse
-from projeto_aplicado.resources.product.repository import (
-    ProductRepository,
-    get_product_repository,
-)
 from projeto_aplicado.resources.product.schemas import (
     CreateProductDTO,
     ProductList,
     ProductOut,
     UpdateProductDTO,
 )
-from projeto_aplicado.resources.product.service import ProductService
-from projeto_aplicado.resources.user.model import User, UserRole
+from projeto_aplicado.resources.product.service import (
+    ProductService,
+    get_product_service,
+)
+from projeto_aplicado.resources.user.controller import UserService
+from projeto_aplicado.resources.user.model import User
+from projeto_aplicado.resources.user.service import get_user_service
 from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
 
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
+ProductServiceDep = Annotated[ProductService, Depends(get_product_service)]
+CurrentUser = Annotated[User, Depends(get_current_user)]
+
 router = APIRouter(tags=['Produtos'], prefix=f'{settings.API_PREFIX}/products')
-
-
-def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail='Only admin users can perform this action',
-        )
-    return current_user
-
-
-def get_user_service(
-    repo: ProductRepository = Depends(get_product_repository),
-) -> ProductService:
-    return ProductService(repo)
 
 
 @router.get(
@@ -100,86 +89,83 @@ def get_user_service(
         },
     },
 )
-def fetch_products(
+async def fetch_products(
+    current_user: CurrentUser,
+    service: ProductServiceDep,
     offset: int = 0,
     limit: int = 100,
-    current_user: User = Depends(get_current_user),
-    service: ProductService = Depends(get_user_service),
 ):
     """
     Retorna a lista de produtos do sistema com paginação.
     """
-    products = service.list_products(offset=offset, limit=limit)
-    return service.to_product_list(products, offset, limit)
+
+    products = await service.list_products(offset=offset, limit=limit)
+    product_list = await service.to_product_list(products, offset, limit)
+    return product_list
 
 
 @router.get('/{product_id}', response_model=ProductOut)
-def get_product_by_id(
+async def get_product_by_id(
     product_id: str,
-    current_user: User = Depends(get_current_user),
-    service: ProductService = Depends(get_user_service),
+    current_user: CurrentUser,
+    service: ProductServiceDep,
 ):
     """
     Get a product by its ID.
     """
-    product = service.get_product_by_id(product_id)
-    return service.to_product_out(product)
+    product = await service.get_product_by_id(product_id)
+    product_out = await service.to_product_out(product)
+    return product_out
 
 
 @router.post('/', response_model=BaseResponse, status_code=HTTPStatus.CREATED)
-def create_product(
+async def create_product(
     product_dto: CreateProductDTO,
-    service: ProductService = Depends(get_user_service),
-    current_user: User = Depends(get_admin_user),
+    user_service: UserServiceDep,
+    current_user: CurrentUser,
+    service: ProductServiceDep,
 ):
     """
     Cria um novo produto no sistema.
     """
-    product = service.create_product(product_dto)
-    return service.to_base_response(product, 'created')
+    await user_service.ensure_admin(current_user)
+    product = await service.create_product(product_dto)
+    response = await service.to_base_response(product, 'created')
+    return response
 
 
 @router.put('/{product_id}', response_model=BaseResponse)
-def update_product(
+async def update_product(
     product_id: str,
     product_dto: UpdateProductDTO,
-    service: ProductService = Depends(get_user_service),
-    current_user: User = Depends(get_admin_user),
+    user_service: UserServiceDep,
+    current_user: CurrentUser,
+    service: ProductServiceDep,
 ):
     """
     Update an existing product.
     """
-    product = service.get_product_by_id(product_id)
-    updated_product = service.update_product(product, product_dto)
-    return service.to_base_response(updated_product, 'updated')
-
-
-@router.patch('/{product_id}', response_model=BaseResponse)
-def patch_product(
-    product_id: str,
-    product_dto: UpdateProductDTO,
-    service: ProductService = Depends(get_user_service),
-    current_user: User = Depends(get_admin_user),
-):
-    """
-    Partially update an existing product.
-    """
-    product = service.get_product_by_id(product_id)
-    updated_product = service.update_product(product, product_dto)
-    return service.to_base_response(updated_product, 'updated')
+    await user_service.ensure_admin(current_user)
+    product = await service.get_product_by_id(product_id)
+    updated_product = await service.update_product(product, product_dto)
+    response = await service.to_base_response(updated_product, 'updated')
+    return response
 
 
 @router.delete(
     '/{product_id}', response_model=BaseResponse, status_code=HTTPStatus.OK
 )
-def delete_product(
+async def delete_product(
     product_id: str,
-    service: ProductService = Depends(get_user_service),
-    current_user: User = Depends(get_admin_user),
+    user_service: UserServiceDep,
+    current_user: CurrentUser,
+    service: ProductServiceDep,
 ):
     """
     Delete a product.
     """
-    product = service.get_product_by_id(product_id)
-    service.delete_product(product)
-    return service.to_base_response(product, 'deleted')
+    await user_service.ensure_admin(current_user)
+    product = await service.get_product_by_id(product_id)
+    await service.delete_product(product)
+    response = await service.to_base_response(product, 'deleted')
+    return response
