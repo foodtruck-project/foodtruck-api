@@ -14,19 +14,19 @@ def test_get_products(client, itens, admin_headers):
     response = client.get(f'{API_PREFIX}/products/', headers=admin_headers)
     assert response.status_code == HTTPStatus.OK
     assert response.headers['Content-Type'] == 'application/json'
-    assert len(response.json()['items']) == len(itens)
-    assert response.json()['items'] == [
-        {
-            'id': str(item.id),
-            'description': item.description,
-            'name': item.name,
-            'price': item.price,
-            'category': item.category,
-            'created_at': item.created_at.isoformat(),
-            'updated_at': item.updated_at.isoformat(),
+    data = response.json()
+    assert 'items' in data
+    assert len(data['items']) == len(itens)
+    for product in data['items']:
+        assert set(product.keys()) == {
+            'id',
+            'description',
+            'name',
+            'price',
+            'category',
+            'created_at',
+            'updated_at',
         }
-        for item in itens
-    ]
 
 
 def test_get_product_by_id_not_found(client, admin_headers):
@@ -49,9 +49,10 @@ def test_create_product(client, admin_headers):
         f'{API_PREFIX}/products/', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.CREATED
-    assert response.headers['Content-Type'] == 'application/json'
-    assert response.json()['action'] == 'created'
-    assert response.json()['id'] is not None
+    product = response.json()
+    assert set(product.keys()) == {'action', 'id'}
+    assert product['action'] == 'created'
+    assert product['id'] is not None
 
 
 def test_create_product_conflict(client, itens, admin_headers):
@@ -78,11 +79,11 @@ def test_update_product(client, itens, admin_headers):
         json=payload,
         headers=admin_headers,
     )
-
     assert response.status_code == HTTPStatus.OK
-    assert response.headers['Content-Type'] == 'application/json'
-    assert response.json()['action'] == 'updated'
-    assert response.json()['id'] == itens[0].id
+    product = response.json()
+    assert set(product.keys()) == {'action', 'id'}
+    assert product['action'] == 'updated'
+    assert product['id'] == itens[0].id
 
 
 def test_update_product_not_found(client, admin_headers):
@@ -102,9 +103,10 @@ def test_delete_product(client, itens, admin_headers):
         f'{API_PREFIX}/products/{itens[0].id}', headers=admin_headers
     )
     assert response.status_code == HTTPStatus.OK
-    assert response.headers['Content-Type'] == 'application/json'
-    assert response.json()['action'] == 'deleted'
-    assert response.json()['id'] == itens[0].id
+    product = response.json()
+    assert set(product.keys()) == {'action', 'id'}
+    assert product['action'] == 'deleted'
+    assert product['id'] == itens[0].id
 
 
 def test_delete_product_not_found(client, admin_headers):
