@@ -1,5 +1,6 @@
 import pytest
-from fastapi.testclient import TestClient
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlmodel import Session, StaticPool, create_engine
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
@@ -60,15 +61,17 @@ def session(engine):
     drop_all(engine)
 
 
-@pytest.fixture
-def client(session, redis_client):
+@pytest_asyncio.fixture
+async def client(session, redis_client):
     def get_session_override():
         return session
 
     def get_redis_override():
         return redis_client
 
-    with TestClient(app) as client:
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url='http://test'
+    ) as client:
         app.dependency_overrides[get_session] = get_session_override
         app.dependency_overrides[get_redis] = get_redis_override
         yield client
@@ -222,9 +225,9 @@ def users(session):
     return users
 
 
-@pytest.fixture
-def admin_headers(client, users):
-    response = client.post(
+@pytest_asyncio.fixture
+async def admin_headers(client, users):
+    response = await client.post(
         f'{settings.API_PREFIX}/token/',
         data={'username': users[2].username, 'password': 'password'},
     )
@@ -233,9 +236,9 @@ def admin_headers(client, users):
     return headers
 
 
-@pytest.fixture
-def kitchen_headers(client, users):
-    response = client.post(
+@pytest_asyncio.fixture
+async def kitchen_headers(client, users):
+    response = await client.post(
         f'{settings.API_PREFIX}/token/',
         data={'username': users[1].username, 'password': 'password'},
     )
@@ -243,9 +246,9 @@ def kitchen_headers(client, users):
     return headers
 
 
-@pytest.fixture
-def attendant_headers(client, users):
-    response = client.post(
+@pytest_asyncio.fixture
+async def attendant_headers(client, users):
+    response = await client.post(
         f'{settings.API_PREFIX}/token/',
         data={'username': users[0].username, 'password': 'password'},
     )
