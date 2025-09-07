@@ -19,7 +19,7 @@ UserServiceDep = Annotated[
 
 router = APIRouter(
     tags=['Setup'],
-    prefix=f'{settings.API_PREFIX}/setup',
+    prefix='/setup',
     include_in_schema=False,
 )
 
