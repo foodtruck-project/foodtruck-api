@@ -28,4 +28,5 @@ router = APIRouter(
 async def setup_app(
     user_service: UserServiceDep,
 ):
-    await user_service.create_default_users()
+    created_users = await user_service.create_default_users()
+    return {'created_users': created_users}

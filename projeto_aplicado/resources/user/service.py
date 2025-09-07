@@ -1,3 +1,5 @@
+import secrets
+import string
 from http import HTTPStatus
 from typing import Sequence
 
@@ -117,35 +119,59 @@ class UserService:
         )
 
     async def create_default_users(self):
-        """Create default users for the application."""
+        """Create default users for the application with random passwords and return created data."""  # noqa: E501
+        created_users = []
+
+        def generate_password(length=16):
+            alphabet = (
+                string.ascii_letters + string.digits + string.punctuation
+            )
+            return ''.join(secrets.choice(alphabet) for _ in range(length))
+
         admin_exists = self.repository.get_by_username('admin') is not None
         website_exists = self.repository.get_by_username('website') is not None
 
         if not admin_exists:
+            admin_password = generate_password()
             admin_user = CreateUserDTO(
                 username='admin',
                 full_name='Administrator',
                 email='admin@example.com',
-                password='admin123456',
+                password=admin_password,
                 role=UserRole.ADMIN,
             )
-            await self.create_user(admin_user)
+            created = await self.create_user(admin_user)
+            created_users.append({
+                'username': created.username,
+                'email': created.email,
+                'role': created.role,
+                'password': admin_password,
+            })
 
         if not website_exists:
+            website_password = generate_password()
             website_user = CreateUserDTO(
                 username='website',
                 full_name='Website Integration',
                 email='website@example.com',
-                password='website123456',
+                password=website_password,
                 role=UserRole.WEBSITE,
             )
-            await self.create_user(website_user)
+            created = await self.create_user(website_user)
+            created_users.append({
+                'username': created.username,
+                'email': created.email,
+                'role': created.role,
+                'password': website_password,
+            })
 
         if admin_exists and website_exists:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
                 detail='Setup has already been completed',
             )
+
+        return created_users
 
 
 async def get_user_service(
