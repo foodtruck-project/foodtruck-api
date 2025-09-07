@@ -15,7 +15,7 @@ class Order(BaseModel, table=True):
     status: str = Field(
         max_length=20, nullable=False, default=OrderStatus.PENDING
     )
-    total: float = Field(nullable=False, gt=0.0, default=0.0)
+    total: float = Field(nullable=False, ge=0.0, default=0.0)
     locator: str = Field(
         default_factory=generate_locator, index=True, nullable=False
     )
