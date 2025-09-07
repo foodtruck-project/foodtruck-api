@@ -8,10 +8,6 @@ from fastapi import (
 
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.resources.base.schemas import BaseResponse
-from projeto_aplicado.resources.order.repository import (
-    OrderRepository,
-    get_order_repository,
-)
 from projeto_aplicado.resources.order.schemas import (
     CreateOrderDTO,
     OrderItemList,
@@ -19,10 +15,9 @@ from projeto_aplicado.resources.order.schemas import (
     OrderOut,
     UpdateOrderDTO,
 )
-from projeto_aplicado.resources.order.service import OrderService
-from projeto_aplicado.resources.product.repository import (
-    ProductRepository,
-    get_product_repository,
+from projeto_aplicado.resources.order.service import (
+    OrderService,
+    get_order_service,
 )
 from projeto_aplicado.resources.user.model import User
 from projeto_aplicado.settings import get_settings
@@ -30,18 +25,7 @@ from projeto_aplicado.settings import get_settings
 settings = get_settings()
 
 
-OrderRepo = Annotated[OrderRepository, Depends(get_order_repository)]
-ProductRepo = Annotated[ProductRepository, Depends(get_product_repository)]
-
-
-def get_order_service(
-    order_repo: OrderRepository = Depends(get_order_repository),
-    product_repo: ProductRepository = Depends(get_product_repository),
-) -> OrderService:
-    return OrderService(order_repo, product_repo)
-
-
-OrderSvc = Annotated[OrderService, Depends(get_order_service)]
+OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 router = APIRouter(tags=['Pedidos'], prefix=f'{settings.API_PREFIX}/orders')
 
@@ -99,8 +83,8 @@ router = APIRouter(tags=['Pedidos'], prefix=f'{settings.API_PREFIX}/orders')
         },
     },
 )
-def fetch_orders(
-    service: OrderSvc,
+async def fetch_orders(
+    service: OrderServiceDep,
     current_user: CurrentUser,
     offset: int = 0,
     limit: int = 100,
@@ -108,27 +92,29 @@ def fetch_orders(
     """
     Retorna a lista de pedidos do sistema.
     """
-    orders = service.list_orders(offset=offset, limit=limit)
-    return service.to_order_list(orders, offset, limit)
+    orders = await service.list_orders(offset=offset, limit=limit)
+    order_list = service.to_order_list(orders, offset, limit)
+    return order_list
 
 
 @router.get('/{order_id}', response_model=OrderOut)
-def fetch_order_by_id(
+async def fetch_order_by_id(
     order_id: str,
-    service: OrderSvc,
+    service: OrderServiceDep,
     current_user: CurrentUser,
 ):
     """
     Get a order by ID.
     """
-    order = service.get_order_by_id(order_id)
-    return service.to_order_out(order)
+    order = await service.get_order_by_id(order_id)
+    order_out = service.to_order_out(order)
+    return order_out
 
 
 @router.get('/{order_id}/items', response_model=OrderItemList)
-def fetch_order_items(
+async def fetch_order_items(
     order_id: str,
-    service: OrderSvc,
+    service: OrderServiceDep,
     current_user: CurrentUser,
     offset: int = 0,
     limit: int = 100,
@@ -136,8 +122,9 @@ def fetch_order_items(
     """
     Get all items of an order.
     """
-    order = service.get_order_by_id(order_id)
-    return service.to_order_item_list(order, offset, limit)
+    order = await service.get_order_by_id(order_id)
+    order_item_list = service.to_order_item_list(order, offset, limit)
+    return order_item_list
 
 
 @router.post(
@@ -211,40 +198,43 @@ def fetch_order_items(
 )
 async def create_order(
     dto: CreateOrderDTO,
-    service: OrderSvc,
+    service: OrderServiceDep,
     current_user: CurrentUser,
 ):
     """
     Cria um novo pedido no sistema.
     """
-    order = service.create_order(dto, current_user.role)
-    return service.to_base_response(order, 'created')
+    order = await service.create_order(dto, current_user.role)
+    response = service.to_base_response(order, 'created')
+    return response
 
 
 @router.patch('/{order_id}', response_model=BaseResponse)
-def update_order(
+@router.put('/{order_id}', response_model=BaseResponse)
+async def update_order(
     order_id: str,
     dto: UpdateOrderDTO,
-    service: OrderSvc,
+    service: OrderServiceDep,
     current_user: CurrentUser,
 ):
     """
     Update an order by ID.
     """
-    order = service.get_order_by_id(order_id)
-    updated_order = service.update_order(order, dto, current_user.role)
-    return service.to_base_response(updated_order, 'updated')
+    order = await service.get_order_by_id(order_id)
+    updated_order = await service.update_order(order, dto, current_user.role)
+    response = service.to_base_response(updated_order, 'updated')
+    return response
 
 
 @router.delete('/{order_id}', response_model=BaseResponse)
-def delete_order(
+async def delete_order(
     order_id: str,
-    service: OrderSvc,
+    service: OrderServiceDep,
     current_user: CurrentUser,
 ):
     """
     Delete an order by ID.
     """
-    order = service.get_order_by_id(order_id)
-    service.delete_order(order, current_user.role)
+    order = await service.get_order_by_id(order_id)
+    await service.delete_order(order, current_user.role)
     return service.to_base_response(order, 'deleted')
