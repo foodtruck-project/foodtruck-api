@@ -62,7 +62,7 @@ testpaths = ["tests", "projeto_aplicado/cli/tests"]
 lint = 'ruff check . && ruff check . --diff'
 format = 'ruff check . --fix && ruff format .'
 dev = 'fastapi dev projeto_aplicado/app.py --reload'
-test = 'pytest -s -x --cov=projeto_aplicado'
+test = 'pytest -s -x --cov=projeto_aplicado -vv'
 run = 'fastapi run projeto_aplicado/app.py --host 0.0.0.0 --port 8000'
 export = 'uv pip compile pyproject.toml --output-file requirements.txt'
 
