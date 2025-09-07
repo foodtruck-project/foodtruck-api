@@ -24,94 +24,57 @@ from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
 
-
 OrderServiceDep = Annotated[OrderService, Depends(get_order_service)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
 router = APIRouter(tags=['Pedidos'], prefix=f'{settings.API_PREFIX}/orders')
 
 
-@router.get(
-    '/',
-    response_model=OrderList,
-    status_code=HTTPStatus.OK,
-    responses={
-        200: {
-            'description': 'Lista de pedidos retornada com sucesso',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'orders': [
-                            {
-                                'id': '1',
-                                'status': 'pending',
-                                'total': 41.80,
-                                'created_at': '2024-03-20T10:00:00',
-                                'updated_at': '2024-03-20T10:00:00',
-                                'locator': 'A123',
-                                'notes': 'Sem cebola',
-                            },
-                            {
-                                'id': '2',
-                                'status': 'preparing',
-                                'total': 25.90,
-                                'created_at': '2024-03-20T10:00:00',
-                                'updated_at': '2024-03-20T10:00:00',
-                                'locator': 'B456',
-                                'notes': None,
-                            },
-                        ],
-                        'pagination': {
-                            'offset': 0,
-                            'limit': 100,
-                            'total_count': 2,
-                            'total_pages': 1,
-                            'page': 1,
-                        },
-                    }
-                }
-            },
-        },
-        401: {
-            'description': 'Não autorizado',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Not authenticated',
-                    }
-                }
-            },
-        },
-    },
-)
+@router.get('/', response_model=OrderList, status_code=HTTPStatus.OK)
 async def fetch_orders(
     service: OrderServiceDep,
     current_user: CurrentUser,
     offset: int = 0,
     limit: int = 100,
 ):
-    """
-    Retorna a lista de pedidos do sistema.
-    """
+    """Retorna lista paginada de pedidos."""
     orders = await service.list_orders(offset=offset, limit=limit)
     order_list = service.to_order_list(orders, offset, limit)
     return order_list
 
 
-@router.get('/{order_id}', response_model=OrderOut)
+@router.get(
+    '/{order_id}',
+    response_model=OrderOut,
+    summary='Buscar pedido por ID',
+    description='Retorna dados detalhados de um pedido pelo ID.',
+    responses={
+        200: {'description': 'Pedido encontrado'},
+        401: {'description': 'Não autenticado'},
+        404: {'description': 'Pedido não encontrado'},
+    },
+)
 async def fetch_order_by_id(
     order_id: str,
     service: OrderServiceDep,
     current_user: CurrentUser,
 ):
-    """
-    Get a order by ID.
-    """
+    """Busca um pedido pelo ID."""
     order = await service.get_order_by_id(order_id)
     order_out = service.to_order_out(order)
     return order_out
 
 
-@router.get('/{order_id}/items', response_model=OrderItemList)
+@router.get(
+    '/{order_id}/items',
+    response_model=OrderItemList,
+    summary='Listar itens do pedido',
+    description='Retorna lista paginada de itens de um pedido específico.',
+    responses={
+        200: {'description': 'Lista de itens retornada com sucesso'},
+        401: {'description': 'Não autenticado'},
+        404: {'description': 'Pedido não encontrado'},
+    },
+)
 async def fetch_order_items(
     order_id: str,
     service: OrderServiceDep,
@@ -119,91 +82,19 @@ async def fetch_order_items(
     offset: int = 0,
     limit: int = 100,
 ):
-    """
-    Get all items of an order.
-    """
+    """Retorna todos os itens de um pedido."""
     order = await service.get_order_by_id(order_id)
     order_item_list = service.to_order_item_list(order, offset, limit)
     return order_item_list
 
 
-@router.post(
-    '/',
-    response_model=BaseResponse,
-    status_code=HTTPStatus.CREATED,
-    responses={
-        201: {
-            'description': 'Pedido criado com sucesso',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'id': '3',
-                        'action': 'created',
-                    }
-                }
-            },
-        },
-        400: {
-            'description': 'Dados inválidos',
-            'content': {
-                'application/json': {
-                    'examples': {
-                        'empty_items': {
-                            'value': {
-                                'detail': 'Order must have at least one item'
-                            },
-                            'summary': 'Lista de itens vazia',
-                        },
-                        'invalid_quantity': {
-                            'value': {
-                                'detail': 'Quantity must be greater than zero'
-                            },
-                            'summary': 'Quantidade inválida',
-                        },
-                    }
-                }
-            },
-        },
-        401: {
-            'description': 'Não autorizado',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Not authenticated',
-                    }
-                }
-            },
-        },
-        403: {
-            'description': 'Acesso negado',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'You are not allowed to create orders',
-                    }
-                }
-            },
-        },
-        422: {
-            'description': 'Entidade não processável',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Product not found',
-                    }
-                }
-            },
-        },
-    },
-)
+@router.post('/', response_model=BaseResponse, status_code=HTTPStatus.CREATED)
 async def create_order(
     dto: CreateOrderDTO,
     service: OrderServiceDep,
     current_user: CurrentUser,
 ):
-    """
-    Cria um novo pedido no sistema.
-    """
+    """Cria um novo pedido com os itens especificados."""
     order = await service.create_order(dto, current_user.role)
     response = service.to_base_response(order, 'created')
     return response
@@ -217,24 +108,23 @@ async def update_order(
     service: OrderServiceDep,
     current_user: CurrentUser,
 ):
-    """
-    Update an order by ID.
-    """
+    """Atualiza ou substitui um pedido pelo ID."""
     order = await service.get_order_by_id(order_id)
     updated_order = await service.update_order(order, dto, current_user.role)
     response = service.to_base_response(updated_order, 'updated')
     return response
 
 
-@router.delete('/{order_id}', response_model=BaseResponse)
+@router.delete(
+    '/{order_id}', response_model=BaseResponse, status_code=HTTPStatus.OK
+)
 async def delete_order(
     order_id: str,
     service: OrderServiceDep,
     current_user: CurrentUser,
 ):
-    """
-    Delete an order by ID.
-    """
+    """Remove um pedido pelo ID."""
     order = await service.get_order_by_id(order_id)
     await service.delete_order(order, current_user.role)
-    return service.to_base_response(order, 'deleted')
+    response = service.to_base_response(order, 'deleted')
+    return response

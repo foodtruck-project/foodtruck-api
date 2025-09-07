@@ -32,72 +32,14 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 router = APIRouter(tags=['Produtos'], prefix=f'{settings.API_PREFIX}/products')
 
 
-@router.get(
-    '/',
-    response_model=ProductList,
-    status_code=HTTPStatus.OK,
-    responses={
-        200: {
-            'description': 'Lista de produtos retornada com sucesso',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'items': [
-                            {
-                                'id': '1',
-                                'name': 'X-Burger',
-                                'description': 'Hambúrguer artesanal com queijo',  # noqa: E501
-                                'price': 25.90,
-                                'category': 'burger',
-                                'image_url': 'https://example.com/x-burger.jpg',
-                                'is_available': True,
-                                'created_at': '2024-03-20T10:00:00',
-                                'updated_at': '2024-03-20T10:00:00',
-                            },
-                            {
-                                'id': '2',
-                                'name': 'Batata Frita',
-                                'description': 'Porção de batata frita crocante',  # noqa: E501
-                                'price': 15.90,
-                                'category': 'side',
-                                'image_url': 'https://example.com/fries.jpg',
-                                'is_available': True,
-                                'created_at': '2024-03-20T10:00:00',
-                                'updated_at': '2024-03-20T10:00:00',
-                            },
-                        ],
-                        'pagination': {
-                            'offset': 0,
-                            'limit': 100,
-                            'total_count': 2,
-                            'total_pages': 1,
-                            'page': 1,
-                        },
-                    }
-                }
-            },
-        },
-        401: {
-            'description': 'Não autorizado',
-            'content': {
-                'application/json': {
-                    'example': {
-                        'detail': 'Not authenticated',
-                    }
-                }
-            },
-        },
-    },
-)
+@router.get('/', response_model=ProductList, status_code=HTTPStatus.OK)
 async def fetch_products(
     current_user: CurrentUser,
     service: ProductServiceDep,
     offset: int = 0,
     limit: int = 100,
 ):
-    """
-    Retorna a lista de produtos do sistema com paginação.
-    """
+    """Retorna lista paginada de produtos."""
 
     products = await service.list_products(offset=offset, limit=limit)
     product_list = await service.to_product_list(products, offset, limit)
@@ -110,9 +52,7 @@ async def get_product_by_id(
     current_user: CurrentUser,
     service: ProductServiceDep,
 ):
-    """
-    Get a product by its ID.
-    """
+    """Busca um produto pelo ID."""
     product = await service.get_product_by_id(product_id)
     product_out = await service.to_product_out(product)
     return product_out
@@ -125,9 +65,7 @@ async def create_product(
     current_user: CurrentUser,
     service: ProductServiceDep,
 ):
-    """
-    Cria um novo produto no sistema.
-    """
+    """Cria um novo produto no catálogo."""
     await user_service.ensure_admin(current_user)
     product = await service.create_product(product_dto)
     response = await service.to_base_response(product, 'created')
@@ -142,9 +80,7 @@ async def update_product(
     current_user: CurrentUser,
     service: ProductServiceDep,
 ):
-    """
-    Update an existing product.
-    """
+    """Atualiza um produto pelo ID."""
     await user_service.ensure_admin(current_user)
     product = await service.get_product_by_id(product_id)
     updated_product = await service.update_product(product, product_dto)
@@ -161,9 +97,7 @@ async def delete_product(
     current_user: CurrentUser,
     service: ProductServiceDep,
 ):
-    """
-    Delete a product.
-    """
+    """Remove um produto pelo ID."""
     await user_service.ensure_admin(current_user)
     product = await service.get_product_by_id(product_id)
     await service.delete_product(product)
