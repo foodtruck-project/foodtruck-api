@@ -1,5 +1,6 @@
 import pytest
 import pytest_asyncio
+import redis.asyncio as aioredis
 from httpx import ASGITransport, AsyncClient
 from sqlmodel import Session, StaticPool, create_engine
 from testcontainers.postgres import PostgresContainer
@@ -35,10 +36,13 @@ def postgres_container():
 
 
 @pytest.fixture(scope='session')
-def redis_client():
-    """Get the Redis client from the container."""
-    with RedisContainer() as redis_container:
-        yield redis_container.get_client()
+def redis_container():
+    container = RedisContainer()
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(6379))
+    yield {'host': host, 'port': port}
+    container.stop()
 
 
 @pytest.fixture(scope='session')
@@ -49,6 +53,17 @@ def engine(postgres_container):
         poolclass=StaticPool,
     )
     return engine
+
+
+@pytest_asyncio.fixture
+async def redis_client(redis_container):
+    client = aioredis.Redis(
+        host=redis_container['host'],
+        port=redis_container['port'],
+        decode_responses=True,
+    )
+    yield client
+    await client.close()
 
 
 @pytest.fixture
