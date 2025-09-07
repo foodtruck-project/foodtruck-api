@@ -10,6 +10,7 @@ class UserRole(str, Enum):
     KITCHEN = 'kitchen'
     ATTENDANT = 'attendant'
     ADMIN = 'admin'
+    WEBSITE = 'website'
 
 
 class User(BaseModel, table=True):

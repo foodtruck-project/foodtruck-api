@@ -78,3 +78,34 @@ class UserService:
             total_pages=total_pages,
             page=page,
         )
+
+    def create_default_users(self):
+        """Create default users for the application."""
+        admin_exists = self.repository.get_by_username('admin') is not None
+        website_exists = self.repository.get_by_username('website') is not None
+
+        if not admin_exists:
+            admin_user = CreateUserDTO(
+                username='admin',
+                full_name='Administrator',
+                email='admin@example.com',
+                password='admin123456',
+                role=UserRole.ADMIN,
+            )
+            self.create_user(admin_user)
+
+        if not website_exists:
+            website_user = CreateUserDTO(
+                username='website',
+                full_name='Website Integration',
+                email='website@example.com',
+                password='website123456',
+                role=UserRole.WEBSITE,
+            )
+            self.create_user(website_user)
+
+        if admin_exists and website_exists:
+            raise HTTPException(
+                status_code=HTTPStatus.CONFLICT,
+                detail='Setup has already been completed',
+            )
