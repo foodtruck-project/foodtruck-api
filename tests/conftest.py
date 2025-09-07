@@ -2,9 +2,11 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, StaticPool, create_engine
 from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 from projeto_aplicado.app import app
 from projeto_aplicado.auth.password import get_password_hash
+from projeto_aplicado.ext.cache.redis import get_redis
 from projeto_aplicado.ext.database.db import get_session
 from projeto_aplicado.resources.order.model import Order, OrderItem
 from projeto_aplicado.resources.product.enums import ProductCategory
@@ -32,6 +34,13 @@ def postgres_container():
 
 
 @pytest.fixture(scope='session')
+def redis_client():
+    """Get the Redis client from the container."""
+    with RedisContainer() as redis_container:
+        yield redis_container.get_client()
+
+
+@pytest.fixture(scope='session')
 def engine(postgres_container):
     engine = create_engine(
         postgres_container.get_connection_url(),
@@ -52,12 +61,16 @@ def session(engine):
 
 
 @pytest.fixture
-def client(session):
+def client(session, redis_client):
     def get_session_override():
         return session
 
+    def get_redis_override():
+        return redis_client
+
     with TestClient(app) as client:
         app.dependency_overrides[get_session] = get_session_override
+        app.dependency_overrides[get_redis] = get_redis_override
         yield client
 
     app.dependency_overrides.clear()
