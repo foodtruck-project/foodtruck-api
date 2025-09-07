@@ -28,6 +28,14 @@ class UserService:
         self.user_cache = user_cache
 
     async def ensure_admin(self, user: User):
+        """Ensure the user has admin privileges.
+
+        Args:
+            user (User): The user to check.
+
+        Raises:
+            HTTPException: (FORBIDDEN) If the user is not an admin.
+        """
         if user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=HTTPStatus.FORBIDDEN,

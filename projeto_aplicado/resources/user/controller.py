@@ -21,8 +21,9 @@ settings = get_settings()
 
 
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
-router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
 
 
 @router.get(
@@ -129,7 +130,8 @@ async def fetch_users(
     """
     await service.ensure_admin(current_user)
     users = await service.list_users(offset=offset, limit=limit)
-    return await service.to_user_list(users, offset, limit)
+    user_list = await service.to_user_list(users, offset, limit)
+    return user_list
 
 
 @router.get(

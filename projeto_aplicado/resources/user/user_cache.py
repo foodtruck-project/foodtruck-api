@@ -16,7 +16,7 @@ class UserCache:
     def list_key(self, offset: int, limit: int) -> str:
         return f'users:{offset}:{limit}'
 
-    async def get_user_by_id(self, user_id: str, expire: int = 60):
+    async def get_user_by_id(self, user_id: str):
         key = self.user_key(user_id)
         data = await self.redis.get(key)
         if not data:
