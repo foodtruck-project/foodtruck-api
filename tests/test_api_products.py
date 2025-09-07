@@ -77,7 +77,7 @@ async def test_create_product_conflict(client, itens, admin_headers):
 
 async def test_update_product(client, itens, admin_headers):
     payload = {'name': 'Updated Item', 'price': 1599.99}
-    response = await client.patch(
+    response = await client.put(
         f'{API_PREFIX}/products/{itens[0].id}',
         json=payload,
         headers=admin_headers,
@@ -91,7 +91,7 @@ async def test_update_product(client, itens, admin_headers):
 
 async def test_update_product_not_found(client, admin_headers):
     update_payload = {'name': 'Nonexistent Item', 'price': 20.99}
-    response = await client.patch(
+    response = await client.put(
         f'{API_PREFIX}/products/nonexistent-id',
         json=update_payload,
         headers=admin_headers,
@@ -198,7 +198,7 @@ async def test_update_product_with_invalid_price(
         'price': -5.0,  # Invalid negative price
         'category': ProductCategory.DRINK,
     }
-    response = await client.patch(
+    response = await client.put(
         f'{API_PREFIX}/products/{products[0].id}',
         json=data,
         headers=admin_headers,
@@ -215,7 +215,7 @@ async def test_update_product_with_invalid_category(
         'price': 5.0,
         'category': 'INVALID_CATEGORY',
     }
-    response = await client.patch(
+    response = await client.put(
         f'{API_PREFIX}/products/{products[0].id}',
         json=data,
         headers=admin_headers,
