@@ -2,12 +2,16 @@ import pickle
 from http import HTTPStatus
 from typing import Sequence
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 from redis.asyncio import Redis
 
+from projeto_aplicado.ext.cache.redis import get_redis
 from projeto_aplicado.resources.base.schemas import Pagination
 from projeto_aplicado.resources.user.model import User, UserRole
-from projeto_aplicado.resources.user.repository import UserRepository
+from projeto_aplicado.resources.user.repository import (
+    UserRepository,
+    get_user_repository,
+)
 from projeto_aplicado.resources.user.schemas import (
     CreateUserDTO,
     UpdateUserDTO,
@@ -120,3 +124,10 @@ class UserService:
                 status_code=HTTPStatus.CONFLICT,
                 detail='Setup has already been completed',
             )
+
+
+async def get_user_service(
+    repo: UserRepository = Depends(get_user_repository),
+    redis=Depends(get_redis),
+):
+    return UserService(repo, redis)

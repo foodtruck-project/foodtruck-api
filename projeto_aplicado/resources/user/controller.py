@@ -4,32 +4,23 @@ from typing import Annotated
 from fastapi import APIRouter, Depends
 
 from projeto_aplicado.auth.security import get_current_user
-from projeto_aplicado.ext.cache.redis import get_redis
 from projeto_aplicado.resources.user.model import User
-from projeto_aplicado.resources.user.repository import (
-    UserRepository,
-    get_user_repository,
-)
 from projeto_aplicado.resources.user.schemas import (
     CreateUserDTO,
     UpdateUserDTO,
     UserList,
     UserOut,
 )
-from projeto_aplicado.resources.user.service import UserService
+from projeto_aplicado.resources.user.service import (
+    UserService,
+    get_user_service,
+)
 from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
 
 
-async def get_user_service(
-    repo: UserRepository = Depends(get_user_repository),
-    redis=Depends(get_redis),
-) -> UserService:
-    return UserService(repo, redis)
-
-
-UserSvc = Annotated[UserService, Depends(get_user_service)]
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
@@ -126,7 +117,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
     },
 )
 async def fetch_users(
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
     offset: int = 0,
     limit: int = 100,
@@ -222,7 +213,7 @@ async def fetch_users(
 )
 async def fetch_user_by_id(
     user_id: str,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
     """
@@ -335,7 +326,7 @@ async def fetch_user_by_id(
 )
 async def create_user(
     dto: CreateUserDTO,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
     """
@@ -352,7 +343,7 @@ async def create_user(
 async def update_user(
     user_id: str,
     dto: UpdateUserDTO,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
     await service.ensure_admin(current_user)
@@ -364,7 +355,7 @@ async def update_user(
 @router.delete('/{user_id}', status_code=HTTPStatus.OK)
 async def delete_user(
     user_id: str,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
     await service.ensure_admin(current_user)
