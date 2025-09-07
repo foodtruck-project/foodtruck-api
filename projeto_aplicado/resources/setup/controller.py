@@ -24,7 +24,7 @@ router = APIRouter(
 )
 
 
-@router.get('/setup', status_code=200)
+@router.get('/', status_code=200)
 async def setup_app(
     user_service: UserServiceDep,
 ):
