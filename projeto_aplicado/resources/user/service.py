@@ -1,9 +1,7 @@
-import pickle
 from http import HTTPStatus
 from typing import Sequence
 
 from fastapi import Depends, HTTPException
-from redis.asyncio import Redis
 
 from projeto_aplicado.ext.cache.redis import get_redis
 from projeto_aplicado.resources.base.schemas import Pagination
@@ -18,12 +16,16 @@ from projeto_aplicado.resources.user.schemas import (
     UserList,
     UserOut,
 )
+from projeto_aplicado.resources.user.user_cache import (
+    UserCache,
+    get_user_cache,
+)
 
 
 class UserService:
-    def __init__(self, repository: UserRepository, redis: Redis):
+    def __init__(self, repository: UserRepository, user_cache: UserCache):
         self.repository = repository
-        self.redis = redis
+        self.user_cache = user_cache
 
     async def ensure_admin(self, user: User):
         if user.role != UserRole.ADMIN:
@@ -33,35 +35,47 @@ class UserService:
             )
 
     async def list_users(self, offset: int, limit: int) -> Sequence[User]:
-        cache_key = f'users:{offset}:{limit}'
-        cached = await self.redis.get(cache_key)
-        if cached:
-            return pickle.loads(cached)
-        users = self.repository.get_all(offset=offset, limit=limit)
-        self.redis.setex(
-            cache_key, 60, pickle.dumps(users)
-        )  # cache for 60 seconds
+        cached_users = await self.user_cache.list_users(offset, limit)
+        if cached_users:
+            return cached_users
+
+        users = self.repository.get_all(offset, limit)
+        await self.user_cache.set_user_list(offset, limit, users)
         return users
 
     async def get_user_by_id(self, user_id: str) -> User:
+        cached_user = await self.user_cache.get_user_by_id(user_id)
+        if cached_user:
+            return cached_user
         user = self.repository.get_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail='User not found'
             )
+        await self.user_cache.set_user(user)
         return user
 
-    async def create_user(self, dto: CreateUserDTO) -> User:
+    async def create_user(self, dto: CreateUserDTO):
         user = User(**dto.model_dump())
-        return self.repository.create(user)
+        created = self.repository.create(user)
+        await self.user_cache.invalidate_list()
+        await self.user_cache.invalidate_user(created.id)
+        return created
 
-    async def update_user(self, user: User, dto: UpdateUserDTO) -> User:
-        return self.repository.update(user, dto.model_dump(exclude_unset=True))
+    async def update_user(self, user: User, dto: UpdateUserDTO):
+        updated = self.repository.update(
+            user, dto.model_dump(exclude_unset=True)
+        )
+        await self.user_cache.invalidate_user(user.id)
+        await self.user_cache.invalidate_list()
+        return updated
 
     async def delete_user(self, user: User) -> None:
         self.repository.delete(user)
+        await self.user_cache.invalidate_user(user.id)
+        await self.user_cache.invalidate_list()
 
-    async def to_user_out(self, user: User) -> UserOut:
+    async def to_user_out(self, user: User):
         return UserOut(
             id=user.id,
             username=user.username,
@@ -74,7 +88,7 @@ class UserService:
 
     async def to_user_list(
         self, users: Sequence[User], offset: int, limit: int
-    ) -> UserList:
+    ):
         return UserList(
             items=[await self.to_user_out(user) for user in users],
             pagination=await self.get_pagination(offset, limit),
@@ -130,4 +144,5 @@ async def get_user_service(
     repo: UserRepository = Depends(get_user_repository),
     redis=Depends(get_redis),
 ):
-    return UserService(repo, redis)
+    user_cache = get_user_cache(redis)
+    return UserService(repo, user_cache)
