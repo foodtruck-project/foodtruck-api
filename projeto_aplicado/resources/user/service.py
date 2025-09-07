@@ -1,7 +1,9 @@
+import pickle
 from http import HTTPStatus
 from typing import Sequence
 
 from fastapi import HTTPException
+from redis.asyncio import Redis
 
 from projeto_aplicado.resources.base.schemas import Pagination
 from projeto_aplicado.resources.user.model import User, UserRole
@@ -15,20 +17,29 @@ from projeto_aplicado.resources.user.schemas import (
 
 
 class UserService:
-    def __init__(self, repository: UserRepository):
+    def __init__(self, repository: UserRepository, redis: Redis):
         self.repository = repository
+        self.redis = redis
 
-    def ensure_admin(self, user: User):
+    async def ensure_admin(self, user: User):
         if user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=HTTPStatus.FORBIDDEN,
                 detail='You are not allowed to perform this action',
             )
 
-    def list_users(self, offset: int, limit: int) -> Sequence[User]:
-        return self.repository.get_all(offset=offset, limit=limit)
+    async def list_users(self, offset: int, limit: int) -> Sequence[User]:
+        cache_key = f'users:{offset}:{limit}'
+        cached = await self.redis.get(cache_key)
+        if cached:
+            return pickle.loads(cached)
+        users = self.repository.get_all(offset=offset, limit=limit)
+        self.redis.setex(
+            cache_key, 60, pickle.dumps(users)
+        )  # cache for 60 seconds
+        return users
 
-    def get_user_by_id(self, user_id: str) -> User:
+    async def get_user_by_id(self, user_id: str) -> User:
         user = self.repository.get_by_id(user_id)
         if not user:
             raise HTTPException(
@@ -36,17 +47,17 @@ class UserService:
             )
         return user
 
-    def create_user(self, dto: CreateUserDTO) -> User:
+    async def create_user(self, dto: CreateUserDTO) -> User:
         user = User(**dto.model_dump())
         return self.repository.create(user)
 
-    def update_user(self, user: User, dto: UpdateUserDTO) -> User:
+    async def update_user(self, user: User, dto: UpdateUserDTO) -> User:
         return self.repository.update(user, dto.model_dump(exclude_unset=True))
 
-    def delete_user(self, user: User) -> None:
+    async def delete_user(self, user: User) -> None:
         self.repository.delete(user)
 
-    def to_user_out(self, user: User) -> UserOut:
+    async def to_user_out(self, user: User) -> UserOut:
         return UserOut(
             id=user.id,
             username=user.username,
@@ -57,15 +68,15 @@ class UserService:
             updated_at=user.updated_at,
         )
 
-    def to_user_list(
+    async def to_user_list(
         self, users: Sequence[User], offset: int, limit: int
     ) -> UserList:
         return UserList(
-            items=[self.to_user_out(user) for user in users],
-            pagination=self.get_pagination(offset, limit),
+            items=[await self.to_user_out(user) for user in users],
+            pagination=await self.get_pagination(offset, limit),
         )
 
-    def get_pagination(self, offset: int, limit: int):
+    async def get_pagination(self, offset: int, limit: int):
         total = self.repository.get_total_count()
         page = (offset // limit) + 1 if limit else 1
         total_pages = (
@@ -79,7 +90,7 @@ class UserService:
             page=page,
         )
 
-    def create_default_users(self):
+    async def create_default_users(self):
         """Create default users for the application."""
         admin_exists = self.repository.get_by_username('admin') is not None
         website_exists = self.repository.get_by_username('website') is not None
@@ -92,7 +103,7 @@ class UserService:
                 password='admin123456',
                 role=UserRole.ADMIN,
             )
-            self.create_user(admin_user)
+            await self.create_user(admin_user)
 
         if not website_exists:
             website_user = CreateUserDTO(
@@ -102,7 +113,7 @@ class UserService:
                 password='website123456',
                 role=UserRole.WEBSITE,
             )
-            self.create_user(website_user)
+            await self.create_user(website_user)
 
         if admin_exists and website_exists:
             raise HTTPException(
