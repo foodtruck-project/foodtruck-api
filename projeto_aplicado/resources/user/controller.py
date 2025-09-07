@@ -5,31 +5,25 @@ from fastapi import APIRouter, Depends
 
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.resources.user.model import User
-from projeto_aplicado.resources.user.repository import (
-    UserRepository,
-    get_user_repository,
-)
 from projeto_aplicado.resources.user.schemas import (
     CreateUserDTO,
     UpdateUserDTO,
     UserList,
     UserOut,
 )
-from projeto_aplicado.resources.user.service import UserService
+from projeto_aplicado.resources.user.service import (
+    UserService,
+    get_user_service,
+)
 from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
 
 
-def get_user_service(
-    repo: UserRepository = Depends(get_user_repository),
-) -> UserService:
-    return UserService(repo)
-
-
-UserSvc = Annotated[UserService, Depends(get_user_service)]
-router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
+UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+router = APIRouter(tags=['Usuários'], prefix=f'{settings.API_PREFIX}/users')
 
 
 @router.get(
@@ -57,7 +51,7 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
             'content': {
                 'application/json': {
                     'examples': {
-                        'default': {
+                        'async default': {
                             'summary': 'Exemplo de resposta',
                             'value': {
                                 'items': [
@@ -123,8 +117,8 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
         },
     },
 )
-def fetch_users(
-    service: UserSvc,
+async def fetch_users(
+    service: UserServiceDep,
     current_user: CurrentUser,
     offset: int = 0,
     limit: int = 100,
@@ -134,9 +128,10 @@ def fetch_users(
     - **Apenas administradores podem acessar.**
     - Retorna lista de usuários e informações de paginação.
     """
-    service.ensure_admin(current_user)
-    users = service.list_users(offset=offset, limit=limit)
-    return service.to_user_list(users, offset, limit)
+    await service.ensure_admin(current_user)
+    users = await service.list_users(offset=offset, limit=limit)
+    user_list = await service.to_user_list(users, offset, limit)
+    return user_list
 
 
 @router.get(
@@ -159,7 +154,7 @@ def fetch_users(
             'content': {
                 'application/json': {
                     'examples': {
-                        'default': {
+                        'async default': {
                             'summary': 'Exemplo de resposta',
                             'value': {
                                 'id': '1',
@@ -218,18 +213,18 @@ def fetch_users(
         },
     },
 )
-def fetch_user_by_id(
+async def fetch_user_by_id(
     user_id: str,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
     """
     Busca usuário pelo ID.
     - **Apenas administradores podem acessar.**
     """
-    service.ensure_admin(current_user)
-    user = service.get_user_by_id(user_id)
-    return service.to_user_out(user)
+    await service.ensure_admin(current_user)
+    user = await service.get_user_by_id(user_id)
+    return await service.to_user_out(user)
 
 
 @router.post(
@@ -255,7 +250,7 @@ def fetch_user_by_id(
             'content': {
                 'application/json': {
                     'examples': {
-                        'default': {
+                        'async default': {
                             'summary': 'Exemplo de resposta',
                             'value': {
                                 'id': '3',
@@ -331,9 +326,9 @@ def fetch_user_by_id(
         },
     },
 )
-def create_user(
+async def create_user(
     dto: CreateUserDTO,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
     """
@@ -341,31 +336,31 @@ def create_user(
     - **Apenas administradores podem acessar.**
     - Retorna os dados do usuário criado.
     """
-    service.ensure_admin(current_user)
-    user = service.create_user(dto)
-    return service.to_user_out(user)
+    await service.ensure_admin(current_user)
+    user = await service.create_user(dto)
+    return await service.to_user_out(user)
 
 
 @router.patch('/{user_id}', response_model=UserOut)
-def update_user(
+async def update_user(
     user_id: str,
     dto: UpdateUserDTO,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
-    service.ensure_admin(current_user)
-    user = service.get_user_by_id(user_id)
-    user = service.update_user(user, dto)
-    return service.to_user_out(user)
+    await service.ensure_admin(current_user)
+    user = await service.get_user_by_id(user_id)
+    user = await service.update_user(user, dto)
+    return await service.to_user_out(user)
 
 
 @router.delete('/{user_id}', status_code=HTTPStatus.OK)
-def delete_user(
+async def delete_user(
     user_id: str,
-    service: UserSvc,
+    service: UserServiceDep,
     current_user: CurrentUser,
 ):
-    service.ensure_admin(current_user)
-    user = service.get_user_by_id(user_id)
-    service.delete_user(user)
+    await service.ensure_admin(current_user)
+    user = await service.get_user_by_id(user_id)
+    await service.delete_user(user)
     return {'action': 'deleted', 'id': user_id}

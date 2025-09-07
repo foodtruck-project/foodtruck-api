@@ -1,10 +1,14 @@
 import pytest
-from fastapi.testclient import TestClient
+import pytest_asyncio
+import redis.asyncio as aioredis
+from httpx import ASGITransport, AsyncClient
 from sqlmodel import Session, StaticPool, create_engine
 from testcontainers.postgres import PostgresContainer
+from testcontainers.redis import RedisContainer
 
 from projeto_aplicado.app import app
 from projeto_aplicado.auth.password import get_password_hash
+from projeto_aplicado.ext.cache.redis import get_redis
 from projeto_aplicado.ext.database.db import get_session
 from projeto_aplicado.resources.order.model import Order, OrderItem
 from projeto_aplicado.resources.product.enums import ProductCategory
@@ -32,6 +36,16 @@ def postgres_container():
 
 
 @pytest.fixture(scope='session')
+def redis_container():
+    container = RedisContainer()
+    container.start()
+    host = container.get_container_host_ip()
+    port = int(container.get_exposed_port(6379))
+    yield {'host': host, 'port': port}
+    container.stop()
+
+
+@pytest.fixture(scope='session')
 def engine(postgres_container):
     engine = create_engine(
         postgres_container.get_connection_url(),
@@ -39,6 +53,17 @@ def engine(postgres_container):
         poolclass=StaticPool,
     )
     return engine
+
+
+@pytest_asyncio.fixture
+async def redis_client(redis_container):
+    client = aioredis.Redis(
+        host=redis_container['host'],
+        port=redis_container['port'],
+        decode_responses=True,
+    )
+    yield client
+    await client.close()
 
 
 @pytest.fixture
@@ -51,13 +76,19 @@ def session(engine):
     drop_all(engine)
 
 
-@pytest.fixture
-def client(session):
+@pytest_asyncio.fixture
+async def client(session, redis_client):
     def get_session_override():
         return session
 
-    with TestClient(app) as client:
+    def get_redis_override():
+        return redis_client
+
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url='http://test'
+    ) as client:
         app.dependency_overrides[get_session] = get_session_override
+        app.dependency_overrides[get_redis] = get_redis_override
         yield client
 
     app.dependency_overrides.clear()
@@ -209,9 +240,9 @@ def users(session):
     return users
 
 
-@pytest.fixture
-def admin_headers(client, users):
-    response = client.post(
+@pytest_asyncio.fixture
+async def admin_headers(client, users):
+    response = await client.post(
         f'{settings.API_PREFIX}/token/',
         data={'username': users[2].username, 'password': 'password'},
     )
@@ -220,9 +251,9 @@ def admin_headers(client, users):
     return headers
 
 
-@pytest.fixture
-def kitchen_headers(client, users):
-    response = client.post(
+@pytest_asyncio.fixture
+async def kitchen_headers(client, users):
+    response = await client.post(
         f'{settings.API_PREFIX}/token/',
         data={'username': users[1].username, 'password': 'password'},
     )
@@ -230,9 +261,9 @@ def kitchen_headers(client, users):
     return headers
 
 
-@pytest.fixture
-def attendant_headers(client, users):
-    response = client.post(
+@pytest_asyncio.fixture
+async def attendant_headers(client, users):
+    response = await client.post(
         f'{settings.API_PREFIX}/token/',
         data={'username': users[0].username, 'password': 'password'},
     )

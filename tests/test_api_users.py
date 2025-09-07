@@ -1,16 +1,18 @@
 from http import HTTPStatus
 
-from fastapi.testclient import TestClient
+import pytest
 
 from projeto_aplicado.resources.user.model import User, UserRole
 from projeto_aplicado.settings import get_settings
+
+pytestmark = pytest.mark.asyncio
 
 settings = get_settings()
 API_PREFIX = settings.API_PREFIX
 
 
-def test_get_users(client: TestClient, users: list[User], admin_headers):
-    response = client.get(f'{API_PREFIX}/users/', headers=admin_headers)
+async def test_get_users(client, users: list[User], admin_headers):
+    response = await client.get(f'{API_PREFIX}/users/', headers=admin_headers)
     assert response.status_code == HTTPStatus.OK
     assert response.headers['Content-Type'] == 'application/json'
     data = response.json()
@@ -29,9 +31,9 @@ def test_get_users(client: TestClient, users: list[User], admin_headers):
         }
 
 
-def test_get_user_by_id(client: TestClient, users: list[User], admin_headers):
+async def test_get_user_by_id(client, users: list[User], admin_headers):
     user_id = users[0].id
-    response = client.get(
+    response = await client.get(
         f'{API_PREFIX}/users/{user_id}', headers=admin_headers
     )
     assert response.status_code == HTTPStatus.OK
@@ -49,8 +51,8 @@ def test_get_user_by_id(client: TestClient, users: list[User], admin_headers):
     assert user['id'] == user_id
 
 
-def test_get_user_by_id_not_found(client: TestClient, admin_headers):
-    response = client.get(
+async def test_get_user_by_id_not_found(client, admin_headers):
+    response = await client.get(
         f'{API_PREFIX}/users/99999999', headers=admin_headers
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
@@ -58,7 +60,7 @@ def test_get_user_by_id_not_found(client: TestClient, admin_headers):
     assert response.json() == {'detail': 'User not found'}
 
 
-def test_create_user(client: TestClient, admin_headers):
+async def test_create_user(client, admin_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
@@ -66,7 +68,7 @@ def test_create_user(client: TestClient, admin_headers):
         'password': 'password123',
         'role': UserRole.KITCHEN,
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.CREATED
@@ -85,7 +87,7 @@ def test_create_user(client: TestClient, admin_headers):
     assert user['role'] == data['role'].value
 
 
-def test_update_user(client: TestClient, users: list[User], admin_headers):
+async def test_update_user(client, users: list[User], admin_headers):
     user_id = users[0].id
     data = {
         'username': users[0].username,
@@ -93,7 +95,7 @@ def test_update_user(client: TestClient, users: list[User], admin_headers):
         'email': 'updated@example.com',
         'role': UserRole.ATTENDANT,
     }
-    response = client.patch(
+    response = await client.patch(
         f'{API_PREFIX}/users/{user_id}', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.OK
@@ -112,13 +114,13 @@ def test_update_user(client: TestClient, users: list[User], admin_headers):
     assert user['role'] == data['role'].value
 
 
-def test_update_user_not_found(client: TestClient, admin_headers):
+async def test_update_user_not_found(client, admin_headers):
     data = {
         'username': 'Updated User',
         'email': 'updated@example.com',
         'role': UserRole.ATTENDANT,
     }
-    response = client.patch(
+    response = await client.patch(
         f'{API_PREFIX}/users/99999999', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
@@ -126,9 +128,9 @@ def test_update_user_not_found(client: TestClient, admin_headers):
     assert response.json() == {'detail': 'User not found'}
 
 
-def test_delete_user(client: TestClient, users: list[User], admin_headers):
+async def test_delete_user(client, users: list[User], admin_headers):
     user_id = users[0].id
-    response = client.delete(
+    response = await client.delete(
         f'{API_PREFIX}/users/{user_id}', headers=admin_headers
     )
     assert response.status_code == HTTPStatus.OK
@@ -136,8 +138,8 @@ def test_delete_user(client: TestClient, users: list[User], admin_headers):
     assert response.json() == {'action': 'deleted', 'id': user_id}
 
 
-def test_delete_user_not_found(client: TestClient, admin_headers):
-    response = client.delete(
+async def test_delete_user_not_found(client, admin_headers):
+    response = await client.delete(
         f'{API_PREFIX}/users/99999999', headers=admin_headers
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
@@ -145,32 +147,34 @@ def test_delete_user_not_found(client: TestClient, admin_headers):
     assert response.json() == {'detail': 'User not found'}
 
 
-def test_kitchen_cannot_access_users_api(client: TestClient, kitchen_headers):
-    response = client.get(f'{API_PREFIX}/users/', headers=kitchen_headers)
+async def test_kitchen_cannot_access_users_api(client, kitchen_headers):
+    response = await client.get(
+        f'{API_PREFIX}/users/', headers=kitchen_headers
+    )
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_attendant_cannot_access_users_api(
-    client: TestClient, attendant_headers
-):
-    response = client.get(f'{API_PREFIX}/users/', headers=attendant_headers)
+async def test_attendant_cannot_access_users_api(client, attendant_headers):
+    response = await client.get(
+        f'{API_PREFIX}/users/', headers=attendant_headers
+    )
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_get_users_unauthorized(client: TestClient, users: list[User]):
-    response = client.get(f'{API_PREFIX}/users/')
+async def test_get_users_unauthorized(client, users: list[User]):
+    response = await client.get(f'{API_PREFIX}/users/')
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_get_users_invalid_token(client: TestClient, users: list[User]):
-    response = client.get(
+async def test_get_users_invalid_token(client, users: list[User]):
+    response = await client.get(
         f'{API_PREFIX}/users/',
         headers={'Authorization': 'Bearer invalid_token'},
     )
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_create_user_with_invalid_email(client: TestClient, admin_headers):
+async def test_create_user_with_invalid_email(client, admin_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
@@ -178,13 +182,13 @@ def test_create_user_with_invalid_email(client: TestClient, admin_headers):
         'password': 'password123',
         'role': UserRole.KITCHEN,
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_create_user_with_short_password(client: TestClient, admin_headers):
+async def test_create_user_with_short_password(client, admin_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
@@ -192,13 +196,13 @@ def test_create_user_with_short_password(client: TestClient, admin_headers):
         'password': '12345',  # Too short
         'role': UserRole.KITCHEN,
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_create_user_with_invalid_role(client: TestClient, admin_headers):
+async def test_create_user_with_invalid_role(client, admin_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
@@ -206,29 +210,27 @@ def test_create_user_with_invalid_role(client: TestClient, admin_headers):
         'password': 'password123',
         'role': 'INVALID_ROLE',
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_create_user_with_missing_required_fields(
-    client: TestClient, admin_headers
-):
+async def test_create_user_with_missing_required_fields(client, admin_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
         'email': 'newuser@example.com',
         # Missing password and role
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_update_user_with_invalid_email(
-    client: TestClient, users: list[User], admin_headers
+async def test_update_user_with_invalid_email(
+    client, users: list[User], admin_headers
 ):
     data = {
         'username': users[0].username,
@@ -236,14 +238,14 @@ def test_update_user_with_invalid_email(
         'email': 'invalid-email',
         'role': UserRole.ATTENDANT,
     }
-    response = client.patch(
+    response = await client.patch(
         f'{API_PREFIX}/users/{users[0].id}', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_update_user_with_invalid_role(
-    client: TestClient, users: list[User], admin_headers
+async def test_update_user_with_invalid_role(
+    client, users: list[User], admin_headers
 ):
     data = {
         'username': users[0].username,
@@ -251,14 +253,14 @@ def test_update_user_with_invalid_role(
         'email': 'updated@example.com',
         'role': 'INVALID_ROLE',
     }
-    response = client.patch(
+    response = await client.patch(
         f'{API_PREFIX}/users/{users[0].id}', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_update_user_with_short_password(
-    client: TestClient, users: list[User], admin_headers
+async def test_update_user_with_short_password(
+    client, users: list[User], admin_headers
 ):
     data = {
         'username': users[0].username,
@@ -267,13 +269,13 @@ def test_update_user_with_short_password(
         'password': '12345',  # Too short
         'role': UserRole.ATTENDANT,
     }
-    response = client.patch(
+    response = await client.patch(
         f'{API_PREFIX}/users/{users[0].id}', json=data, headers=admin_headers
     )
     assert response.status_code == HTTPStatus.UNPROCESSABLE_ENTITY
 
 
-def test_kitchen_cannot_create_user(client: TestClient, kitchen_headers):
+async def test_kitchen_cannot_create_user(client, kitchen_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
@@ -281,13 +283,13 @@ def test_kitchen_cannot_create_user(client: TestClient, kitchen_headers):
         'password': 'password123',
         'role': UserRole.KITCHEN,
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=kitchen_headers
     )
     assert response.status_code == HTTPStatus.FORBIDDEN
 
 
-def test_attendant_cannot_create_user(client: TestClient, attendant_headers):
+async def test_attendant_cannot_create_user(client, attendant_headers):
     data = {
         'username': 'newuser',
         'full_name': 'New User',
@@ -295,7 +297,7 @@ def test_attendant_cannot_create_user(client: TestClient, attendant_headers):
         'password': 'password123',
         'role': UserRole.KITCHEN,
     }
-    response = client.post(
+    response = await client.post(
         f'{API_PREFIX}/users/', json=data, headers=attendant_headers
     )
     assert response.status_code == HTTPStatus.FORBIDDEN

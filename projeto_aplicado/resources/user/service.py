@@ -1,52 +1,89 @@
 from http import HTTPStatus
 from typing import Sequence
 
-from fastapi import HTTPException
+from fastapi import Depends, HTTPException
 
+from projeto_aplicado.ext.cache.redis import get_redis
 from projeto_aplicado.resources.base.schemas import Pagination
 from projeto_aplicado.resources.user.model import User, UserRole
-from projeto_aplicado.resources.user.repository import UserRepository
+from projeto_aplicado.resources.user.repository import (
+    UserRepository,
+    get_user_repository,
+)
 from projeto_aplicado.resources.user.schemas import (
     CreateUserDTO,
     UpdateUserDTO,
     UserList,
     UserOut,
 )
+from projeto_aplicado.resources.user.user_cache import (
+    UserCache,
+    get_user_cache,
+)
 
 
 class UserService:
-    def __init__(self, repository: UserRepository):
+    def __init__(self, repository: UserRepository, user_cache: UserCache):
         self.repository = repository
+        self.user_cache = user_cache
 
-    def ensure_admin(self, user: User):
+    async def ensure_admin(self, user: User):
+        """Ensure the user has admin privileges.
+
+        Args:
+            user (User): The user to check.
+
+        Raises:
+            HTTPException: (FORBIDDEN) If the user is not an admin.
+        """
         if user.role != UserRole.ADMIN:
             raise HTTPException(
                 status_code=HTTPStatus.FORBIDDEN,
                 detail='You are not allowed to perform this action',
             )
 
-    def list_users(self, offset: int, limit: int) -> Sequence[User]:
-        return self.repository.get_all(offset=offset, limit=limit)
+    async def list_users(self, offset: int, limit: int) -> Sequence[User]:
+        cached_users = await self.user_cache.list_users(offset, limit)
+        if cached_users:
+            return cached_users
 
-    def get_user_by_id(self, user_id: str) -> User:
+        users = self.repository.get_all(offset, limit)
+        await self.user_cache.set_user_list(offset, limit, users)
+        return users
+
+    async def get_user_by_id(self, user_id: str) -> User:
+        cached_user = await self.user_cache.get_user_by_id(user_id)
+        if cached_user:
+            return cached_user
         user = self.repository.get_by_id(user_id)
         if not user:
             raise HTTPException(
                 status_code=HTTPStatus.NOT_FOUND, detail='User not found'
             )
+        await self.user_cache.set_user(user)
         return user
 
-    def create_user(self, dto: CreateUserDTO) -> User:
+    async def create_user(self, dto: CreateUserDTO):
         user = User(**dto.model_dump())
-        return self.repository.create(user)
+        created = self.repository.create(user)
+        await self.user_cache.invalidate_list()
+        await self.user_cache.invalidate_user(created.id)
+        return created
 
-    def update_user(self, user: User, dto: UpdateUserDTO) -> User:
-        return self.repository.update(user, dto.model_dump(exclude_unset=True))
+    async def update_user(self, user: User, dto: UpdateUserDTO):
+        updated = self.repository.update(
+            user, dto.model_dump(exclude_unset=True)
+        )
+        await self.user_cache.invalidate_user(user.id)
+        await self.user_cache.invalidate_list()
+        return updated
 
-    def delete_user(self, user: User) -> None:
+    async def delete_user(self, user: User) -> None:
         self.repository.delete(user)
+        await self.user_cache.invalidate_user(user.id)
+        await self.user_cache.invalidate_list()
 
-    def to_user_out(self, user: User) -> UserOut:
+    async def to_user_out(self, user: User):
         return UserOut(
             id=user.id,
             username=user.username,
@@ -57,15 +94,15 @@ class UserService:
             updated_at=user.updated_at,
         )
 
-    def to_user_list(
+    async def to_user_list(
         self, users: Sequence[User], offset: int, limit: int
-    ) -> UserList:
+    ):
         return UserList(
-            items=[self.to_user_out(user) for user in users],
-            pagination=self.get_pagination(offset, limit),
+            items=[await self.to_user_out(user) for user in users],
+            pagination=await self.get_pagination(offset, limit),
         )
 
-    def get_pagination(self, offset: int, limit: int):
+    async def get_pagination(self, offset: int, limit: int):
         total = self.repository.get_total_count()
         page = (offset // limit) + 1 if limit else 1
         total_pages = (
@@ -79,7 +116,7 @@ class UserService:
             page=page,
         )
 
-    def create_default_users(self):
+    async def create_default_users(self):
         """Create default users for the application."""
         admin_exists = self.repository.get_by_username('admin') is not None
         website_exists = self.repository.get_by_username('website') is not None
@@ -92,7 +129,7 @@ class UserService:
                 password='admin123456',
                 role=UserRole.ADMIN,
             )
-            self.create_user(admin_user)
+            await self.create_user(admin_user)
 
         if not website_exists:
             website_user = CreateUserDTO(
@@ -102,10 +139,18 @@ class UserService:
                 password='website123456',
                 role=UserRole.WEBSITE,
             )
-            self.create_user(website_user)
+            await self.create_user(website_user)
 
         if admin_exists and website_exists:
             raise HTTPException(
                 status_code=HTTPStatus.CONFLICT,
                 detail='Setup has already been completed',
             )
+
+
+async def get_user_service(
+    repo: UserRepository = Depends(get_user_repository),
+    redis=Depends(get_redis),
+):
+    user_cache = get_user_cache(redis)
+    return UserService(repo, user_cache)
