@@ -72,9 +72,10 @@ class BaseRepository(AbstractRepository[T]):
             # Update the updated_at field if it exists
             if hasattr(entity, 'updated_at'):
                 setattr(entity, 'updated_at', datetime.now(timezone.utc))
+            merged_entity = self.session.merge(entity)
             self.session.commit()
-            self.session.refresh(entity)
-            return entity
+            self.session.refresh(merged_entity)
+            return merged_entity
         except Exception as e:
             self.session.rollback()
             raise e
