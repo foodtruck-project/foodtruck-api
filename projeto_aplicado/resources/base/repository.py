@@ -82,7 +82,8 @@ class BaseRepository(AbstractRepository[T]):
 
     def delete(self, entity: T) -> None:
         try:
-            self.session.delete(entity)
+            persistent_entity = self.session.merge(entity)
+            self.session.delete(persistent_entity)
             self.session.commit()
         except Exception as e:
             self.session.rollback()
