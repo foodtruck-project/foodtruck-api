@@ -1,4 +1,5 @@
 from typing import Annotated
+from typing import Annotated
 
 from fastapi import Depends
 from sqlmodel import Session, func, select
@@ -36,17 +37,24 @@ class OrderRepository(BaseRepository[Order]):
         """  # noqa: E501
         stmt = select(
             OrderItem.product_id,
-            OrderItem.quantity,
-            Order.rating,
-        ).where(Order.rating is not None)
+            func.sum(OrderItem.quantity).label("total_quantity"),
+            func.avg(Order.rating).label("average_rating"),
+        ).join(Order, Order.id == OrderItem.order_id).where(Order.rating is not None).group_by(OrderItem.product_id)
 
         results = self.session.exec(stmt).all()
 
-        return [
-            PublicProductData(
-                product_id=row[0],
-                quantity=row[1],
-                rating=row[2],
-            )
-            for row in results
-        ]
+        processed_results = []
+        for row in results:
+            product_id = row[0]
+            quantity = row[1]
+            rating = row[2]
+
+            if rating is not None:
+                processed_results.append(
+                    PublicProductData(
+                        product_id=product_id,
+                        quantity=quantity,
+                        rating=rating,
+                    )
+                )
+        return processed_results

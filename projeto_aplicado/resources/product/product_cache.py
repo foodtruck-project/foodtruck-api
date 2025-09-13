@@ -27,7 +27,7 @@ class ProductCache:
     async def set_product(self, product: Product, expire: int = 60):
         key = self.product_key(product.id)
         await self.redis.setex(
-            key, expire, json.dumps(product.model_dump_json())
+            key, expire, product.model_dump_json()
         )
 
     async def list_products(self, offset: int, limit: int) -> list[Product]:
@@ -46,8 +46,12 @@ class ProductCache:
         expire: int = 60,
     ):
         key = self.list_key(offset, limit)
+        # Ensure datetime objects are serialized to JSON strings
+        value = json.dumps([p.model_dump(mode='json') for p in products])
         await self.redis.setex(
-            key, expire, json.dumps([u.model_dump_json() for u in products])
+            key,
+            expire,
+            value
         )
 
     async def invalidate_product(self, product_id: str):
