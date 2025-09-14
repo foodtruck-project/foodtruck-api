@@ -1,0 +1,90 @@
+# Development docker-compose (not for production)
+docker-compose.yaml
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Development environment files
+.env
+.env.example
+.envrc
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+cover/
+*.cover
+*.py.cover
+
+# Package management
+.uv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs
+*.log
+
+# Database files (should use volumes)
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+.tmp/
+tmp/
+temp/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Desktop.ini
+Thumbs.db
+
+# GitHub workflows (CI/CD)
+.github/
+
+# Docker files (avoid recursive building)
+Dockerfile*
+.dockerignore
+
+# License
+LICENSE

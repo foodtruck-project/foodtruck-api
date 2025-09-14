@@ -7,13 +7,14 @@ from sqlalchemy import Engine
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.auth.token import router as token_router
 from projeto_aplicado.ext.database.db import get_engine
+from projeto_aplicado.middleware.security import SecurityHeadersMiddleware
 from projeto_aplicado.resources.order.controller import router as order_router
 from projeto_aplicado.resources.product.controller import router as item_router
-from projeto_aplicado.resources.public.products.controller import (
-    router as public_products_router,
-)
 from projeto_aplicado.resources.public.order.controller import (
     router as public_order_router,
+)
+from projeto_aplicado.resources.public.products.controller import (
+    router as public_products_router,
 )
 from projeto_aplicado.resources.setup.controller import router as setup_router
 from projeto_aplicado.resources.user.controller import router as user_router
@@ -78,11 +79,26 @@ app = FastAPI(
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],
+    allow_origins=[
+        settings.FRONTEND_URL,  # Your frontend domain
+        "https://localhost:3000",  # Local development
+        "https://localhost:5173",  # Vite dev server
+        "https://foodtruck-frontend.bentomachado.dev",  # Production frontend
+    ],
     allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=[
+        "Accept",
+        "Accept-Language",
+        "Content-Language",
+        "Content-Type",
+        "Authorization",
+        "X-Requested-With",
+    ],
 )
+
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
 app.include_router(token_router)
