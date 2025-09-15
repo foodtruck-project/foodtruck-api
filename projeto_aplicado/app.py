@@ -76,7 +76,8 @@ app = FastAPI(
 )
 
 
-app.add_middleware(SecurityHeadersMiddleware, enforce_proxy=not settings.API_DEBUG)
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
 app.include_router(token_router)

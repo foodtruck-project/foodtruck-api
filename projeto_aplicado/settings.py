@@ -23,10 +23,6 @@ class BaseAppSettings(BaseSettings):
     # CORS settings (not used in production - Caddy handles CORS)
     FRONTEND_URL: str = 'https://foodtruck.bentomachado.dev'
 
-    # Production/Proxy settings
-    TRUST_PROXY_HEADERS: bool = True
-    ALLOWED_HOSTS: list[str] = ['api-foodtruck.bentomachado.dev', 'localhost', '127.0.0.1']
-
 
 class SensitiveSettings(BaseSettings):
     """Settings that contain sensitive data and should be in .env file."""
