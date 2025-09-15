@@ -14,7 +14,8 @@ from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f'{settings.API_PREFIX}/token')
+# Use URL with trailing slash to match FastAPI's redirect behavior
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/api/v1/token/')
 UserRepositoryDep = Annotated[UserRepository, Depends(get_user_repository)]
 
 
