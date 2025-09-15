@@ -1,6 +1,8 @@
 services:
   foodtruck:
-    image: bentoluizv/foodtruck-project:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: foodtruck
     restart: always
     env_file:
