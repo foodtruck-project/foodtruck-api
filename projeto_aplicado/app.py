@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 
 from projeto_aplicado.auth.security import get_current_user
@@ -75,8 +76,16 @@ app = FastAPI(
     ],
 )
 
+# Add permissive CORS - allow all origins
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=False,  # Cannot be True when allow_origins is "*"
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+)
 
-# Add security headers middleware
+# Add minimal security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
