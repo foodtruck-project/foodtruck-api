@@ -7,7 +7,6 @@ from sqlalchemy import Engine
 from projeto_aplicado.auth.security import get_current_user
 from projeto_aplicado.auth.token import router as token_router
 from projeto_aplicado.ext.database.db import get_engine
-from projeto_aplicado.middleware.security import SecurityHeadersMiddleware
 from projeto_aplicado.resources.order.controller import router as order_router
 from projeto_aplicado.resources.product.controller import router as item_router
 from projeto_aplicado.resources.public.order.controller import (
@@ -94,9 +93,6 @@ app.add_middleware(
     allow_methods=["*"],  # Allow all methods
     allow_headers=["*"],  # Allow all headers
 )
-
-# Add minimal security headers middleware
-app.add_middleware(SecurityHeadersMiddleware)
 
 # Include routers
 app.include_router(token_router)
