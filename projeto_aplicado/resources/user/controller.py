@@ -54,10 +54,10 @@ async def fetch_user_by_id(
 async def create_user(
     dto: CreateUserDTO,
     service: UserServiceDep,
-    current_user: CurrentUser,
+    # current_user: CurrentUser,
 ):
     """Cria um novo usuário"""
-    await service.ensure_admin(current_user)
+    # await service.ensure_admin(current_user)
     user = await service.create_user(dto)
     user_out = await service.to_user_out(user)
     return user_out
