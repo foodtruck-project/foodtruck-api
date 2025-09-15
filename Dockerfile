@@ -29,6 +29,5 @@ EXPOSE 8080
 
 ENTRYPOINT [ "uv" ]
 
-# Use OpenTelemetry auto-instrumentation for zero-code telemetry
-CMD ["run", "opentelemetry-instrument", "--traces_exporter", "otlp", "--metrics_exporter", "otlp", "--logs_exporter", "otlp", "uvicorn", "projeto_aplicado.app:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["run", "uvicorn", "projeto_aplicado.app:app", "--host", "0.0.0.0", "--port", "8080"]
 
