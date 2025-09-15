@@ -38,7 +38,7 @@ def validate_user_credentials(
     return user
 
 
-@router.post('/', response_model=dict, status_code=HTTPStatus.OK)
+@router.post('', response_model=dict, status_code=HTTPStatus.OK)
 async def create_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     user_repository: user_repository_dep,
