@@ -4,9 +4,14 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Add basic security headers to all responses."""
+    """Add basic security headers to all responses and handle HTTPS detection."""
 
     async def dispatch(self, request: Request, call_next):
+        # Ensure FastAPI knows we're behind HTTPS when X-Forwarded-Proto is https
+        if request.headers.get("X-Forwarded-Proto") == "https":
+            # Modify the request URL scheme to https for proper OpenAPI generation
+            request.scope["scheme"] = "https"
+
         response: Response = await call_next(request)
 
         # Basic security headers only

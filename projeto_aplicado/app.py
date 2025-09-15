@@ -44,6 +44,16 @@ app = FastAPI(
     * `/docs`: Interface Swagger para testes interativos
     * `/redoc`: Documentação ReDoc mais detalhada
     """,  # noqa: E501
+    servers=[
+        {
+            "url": "https://api-foodtruck.bentomachado.dev",
+            "description": "Production server"
+        },
+        {
+            "url": "http://localhost:8080",
+            "description": "Development server"
+        }
+    ],
     openapi_tags=[
         {
             'name': 'Token',
