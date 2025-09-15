@@ -1,7 +1,6 @@
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 
 from projeto_aplicado.auth.security import get_current_user
@@ -76,29 +75,8 @@ app = FastAPI(
     ],
 )
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        settings.FRONTEND_URL,  # Your frontend domain
-        "https://localhost:3000",  # Local development
-        "https://localhost:5173",  # Vite dev server
-        "https://foodtruck-frontend.bentomachado.dev",  # Production frontend
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Accept",
-        "Accept-Language",
-        "Content-Language",
-        "Content-Type",
-        "Authorization",
-        "X-Requested-With",
-    ],
-)
 
-# Add security headers middleware
-app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(SecurityHeadersMiddleware, enforce_proxy=not settings.API_DEBUG)
 
 # Include routers
 app.include_router(token_router)
@@ -108,3 +86,9 @@ app.include_router(order_router)
 app.include_router(public_products_router)
 app.include_router(public_order_router)
 app.include_router(setup_router)
+
+
+@app.get('/health', tags=['Health'], include_in_schema=False)
+async def health_check():
+    """Health check endpoint for Docker and load balancers."""
+    return {'status': 'healthy', 'service': 'foodtruck-api'}
