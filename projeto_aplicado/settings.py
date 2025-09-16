@@ -5,7 +5,7 @@ class BaseAppSettings(BaseSettings):
     """Base settings that are not sensitive and can be version controlled."""
 
     # FastAPI settings
-    API_DEBUG: bool = False
+    API_DEBUG: bool = True
     API_VERSION: str = '1.0.0'
     API_PREFIX: str = '/api/v1'
 
