@@ -1,0 +1,40 @@
+# Global
+{
+	debug
+
+	log {
+		output stdout
+		format json
+		level INFO
+		include http.log.access admin.api
+	}
+
+	email bentoluizv@gmail.com
+}
+
+
+### Localhost ###
+
+https://foodtruck-api.docker.localhost {
+    reverse_proxy backend:8080
+}
+
+https://vault.docker.localhost {
+    reverse_proxy vaultwarden:80
+}
+
+# https://foodtruck-api.bentomachado.dev {
+# 	reverse_proxy backend:8080
+
+#     tls {
+# 	  dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+#     }
+# }
+
+# https://vault.bentomachado.dev {
+#     reverse_proxy vaultwarden:80
+
+#     tls {
+#       dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+#     }
+# }
