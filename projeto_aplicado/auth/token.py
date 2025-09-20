@@ -39,7 +39,7 @@ def validate_user_credentials(
 
 
 @router.post(
-    f'{settings.API_PREFIX}/token',
+    f'{settings.API_PREFIX}/token/',
     response_model=dict,
     status_code=HTTPStatus.OK,
 )
