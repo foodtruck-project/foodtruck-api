@@ -1,36 +1,33 @@
 services:
-  traefik:
-    container_name: traefik
-    image: traefik:v3.4.1
-    command:
-      # - "--log.level=DEBUG"
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entryPoints.web.address=:80"
+  caddy:
+    container_name: caddy
+    image: caddy:2
     ports:
       - "80:80"
-      - "8080:8080"
+      - "443:443"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
     networks:
-      - default_network
+      - caddy_network
+    depends_on:
+      - backend
 
   backend:
     container_name: backend
     build:
       context: .
       dockerfile: Dockerfile
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.backend.rule=Host(`foodtruck.docker.localhost`)"
-      - "traefik.http.routers.backend.entrypoints=web"
     env_file:
       - .env
     networks:
-      - default_network
+      - caddy_network
+      - backend_network
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     volumes:
       - ./migrations:/app/migrations
@@ -40,8 +37,6 @@ services:
     image: postgres:16
     env_file:
       - .env
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -50,13 +45,11 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - default_network
+      - backend_network
 
   redis:
     container_name: redis
     image: redis:7.4.2
-    ports:
-      - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -65,12 +58,14 @@ services:
       timeout: 10s
       retries: 5
     networks:
-      - default_network
-
+      - backend_network
 
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
 
 networks:
-  default_network:
+  backend_network:
+  caddy_network:

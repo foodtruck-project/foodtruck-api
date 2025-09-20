@@ -44,7 +44,6 @@ class SensitiveSettings(BaseSettings):
 
 class Settings(BaseAppSettings, SensitiveSettings):
     """Combined settings class that inherits from both base and sensitive settings."""  # noqa: E501
-
     pass
 
 

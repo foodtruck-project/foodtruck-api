@@ -25,10 +25,7 @@ def get_db_url(settings: Settings, cli: bool = False):
     :return: str.
     """
 
-    if cli:
-        url = f'postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOSTNAME_CLI}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}'
-    else:
-        url = f'postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOSTNAME}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}'
+    url = f'postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_HOSTNAME}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}'
 
     return url
 

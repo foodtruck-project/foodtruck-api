@@ -1,0 +1,23 @@
+# Global
+{
+	debug
+
+	log {
+		output stdout
+		format json
+		level INFO
+		include http.log.access admin.api
+	}
+
+	email bentoluizv@gmail.com
+}
+
+
+https://foodtruck-api.docker.localhost {
+    reverse_proxy backend:8080
+}
+
+https://vault.docker.localhost {
+    reverse_proxy vaultwarden:80
+}
+
