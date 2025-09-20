@@ -1,14 +1,10 @@
 services:
   caddy:
     container_name: caddy
-    build:
-      context: .
-      dockerfile: Caddy.Dockerfile
+    image: caddy:2
     ports:
       - "80:80"
       - "443:443"
-    env_file:
-      - .env
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
@@ -64,26 +60,12 @@ services:
     networks:
       - backend_network
 
-  vaultwarden:
-    image: vaultwarden/server:latest
-    container_name: vaultwarden
-    restart: always
-    env_file:
-      - .env
-    volumes:
-      - /vw-data:/data
-    networks:
-      - vault_network
-      - caddy_network
-
 volumes:
   postgres_data:
   redis_data:
   caddy_data:
-  vw_data:
   caddy_config:
 
 networks:
   backend_network:
   caddy_network:
-  vault_network:
