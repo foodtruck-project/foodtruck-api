@@ -13,7 +13,7 @@ from projeto_aplicado.resources.user.repository import (
 from projeto_aplicado.settings import get_settings
 
 settings = get_settings()
-router = APIRouter(tags=['Token'])  # Remove prefix to avoid trailing slash issues
+router = APIRouter(tags=['Token'])
 
 user_repository_dep = Annotated[UserRepository, Depends(get_user_repository)]
 
@@ -38,8 +38,11 @@ def validate_user_credentials(
     return user
 
 
-@router.post(f'{settings.API_PREFIX}/token', response_model=dict, status_code=HTTPStatus.OK)
-@router.post(f'{settings.API_PREFIX}/token/', response_model=dict, status_code=HTTPStatus.OK)
+@router.post(
+    f'{settings.API_PREFIX}/token',
+    response_model=dict,
+    status_code=HTTPStatus.OK,
+)
 async def create_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     user_repository: user_repository_dep,

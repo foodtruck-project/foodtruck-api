@@ -42,49 +42,8 @@ app = FastAPI(
     * `/docs`: Interface Swagger para testes interativos
     * `/redoc`: Documentação ReDoc mais detalhada
     """,  # noqa: E501
-    servers=[
-        {
-            "url": "https://api-foodtruck.bentomachado.dev",
-            "description": "Production server"
-        },
-        {
-            "url": "http://localhost:8080",
-            "description": "Development server"
-        }
-    ],
-    openapi_tags=[
-        {
-            'name': 'Token',
-            'description': 'Operações de autenticação e geração de tokens JWT',
-        },
-        {
-            'name': 'Usuários',
-            'description': 'Gerenciamento de usuários e perfis do sistema',
-        },
-        {
-            'name': 'Produtos',
-            'description': 'Operações relacionadas ao cadastro e gerenciamento de produtos',  # noqa: E501
-        },
-        {
-            'name': 'Pedidos',
-            'description': 'Sistema de pedidos e gerenciamento de comandas',
-        },
-        {
-            'name': 'Public Products',
-            'description': 'Operações públicas relacionadas a produtos',
-        },
-        {
-            'name': 'Public Orders',
-            'description': 'Operações públicas relacionadas a pedidos',
-        },
-        {
-            'name': 'Setup',
-            'description': 'Operações de configuração inicial do sistema',
-        },
-    ],
-)
+    )
 
-# CORS is handled by Caddy reverse proxy
 
 # Include routers
 app.include_router(token_router)
@@ -94,9 +53,3 @@ app.include_router(order_router)
 app.include_router(public_products_router)
 app.include_router(public_order_router)
 app.include_router(setup_router)
-
-
-@app.get('/health', tags=['Health'], include_in_schema=False)
-async def health_check():
-    """Health check endpoint for Docker and load balancers."""
-    return {'status': 'healthy', 'service': 'foodtruck-api'}
