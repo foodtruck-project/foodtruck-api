@@ -1,6 +1,7 @@
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import Engine
 
 from projeto_aplicado.auth.security import get_current_user
@@ -45,7 +46,14 @@ app = FastAPI(
     )
 
 
-# Include routers
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(token_router)
 app.include_router(user_router)
 app.include_router(item_router)
