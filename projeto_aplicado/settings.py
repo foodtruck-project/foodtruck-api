@@ -5,7 +5,7 @@ class BaseAppSettings(BaseSettings):
     """Base settings that are not sensitive and can be version controlled."""
 
     # FastAPI settings
-    API_DEBUG: bool = True
+    API_DEBUG: bool = False
     API_VERSION: str = '1.0.0'
     API_PREFIX: str = '/api/v1'
 
@@ -20,7 +20,6 @@ class BaseAppSettings(BaseSettings):
     REDIS_PORT: int = 6379
     REDIS_EXPIRE_IN_SECONDS: int = 3600
 
-    # CORS settings (not used in production - Caddy handles CORS)
     FRONTEND_URL: str = 'https://foodtruck.bentomachado.dev'
 
 
